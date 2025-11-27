@@ -1514,38 +1514,39 @@
                 </div>
 
                 <div class="control-row">
-                    <div class="control-item" data-tooltip="Quick presets for per-ring rotation to align specific fractions (k/n, (n-k)/n, n/n=0)">
+                    <div class="control-item" data-tooltip="Quick presets for per-ring rotation to align specific fractions to top (90°)">
                         <div class="control-label">
                             <span>Per-Ring Rotation Presets</span>
                         </div>
-                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 8px;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 8px;">
+                            <!-- k/d preset -->
                             <div style="display: flex; flex-direction: column; gap: 4px;">
-                                <button class="btn btn-secondary" onclick="setRingRotationPreset('k/n')" style="padding: 8px 12px;">
-                                    <span id="knPresetLabel">1/n</span>
-                                    <div style="font-size: 0.7em; opacity: 0.7;">k=1</div>
+                                <button class="btn btn-secondary" onclick="setRingRotationPreset('k/d')" style="padding: 8px 12px; height: 60px;">
+                                    <span id="kdPresetLabel" style="font-size: 1.1em;">1/2</span>
+                                    <div style="font-size: 0.7em; opacity: 0.7; margin-top: 4px;">Custom</div>
                                 </button>
-                                <input type="number" id="knNumerator" value="1" min="0" step="1" placeholder="k" style="padding: 4px; text-align: center; font-size: 0.85em;" onchange="updatePresetLabel('k/n')">
+                                <div style="display: flex; gap: 4px; align-items: center;">
+                                    <input type="number" id="kdNumerator" value="1" min="0" step="1" placeholder="k" style="width: 45%; padding: 4px; text-align: center; font-size: 0.85em;" onchange="updatePresetLabel('k/d')">
+                                    <span style="color: var(--text); font-weight: bold;">/</span>
+                                    <input type="number" id="kdDenominator" value="2" min="1" step="1" placeholder="d" style="width: 45%; padding: 4px; text-align: center; font-size: 0.85em;" onchange="updatePresetLabel('k/d')">
+                                </div>
                             </div>
-                            <div style="display: flex; flex-direction: column; gap: 4px;">
-                                <button class="btn btn-secondary" onclick="setRingRotationPreset('(n-k)/n')" style="padding: 8px 12px;">
-                                    <span id="nkPresetLabel">(n-1)/n</span>
-                                    <div style="font-size: 0.7em; opacity: 0.7;">k=1</div>
-                                </button>
-                                <input type="number" id="nkNumerator" value="1" min="0" step="1" placeholder="k" style="padding: 4px; text-align: center; font-size: 0.85em;" onchange="updatePresetLabel('(n-k)/n')">
-                            </div>
+                            <!-- n/n preset -->
                             <button class="btn btn-secondary" onclick="setRingRotationPreset('0')" style="padding: 8px 12px;">
-                                <span>n/n</span>
-                                <div style="font-size: 0.7em; opacity: 0.7;">0° All</div>
+                                <span style="font-size: 1.1em;">0/n</span>
+                                <div style="font-size: 0.7em; opacity: 0.7; margin-top: 4px;">Zero</div>
                             </button>
+                            <!-- Animate button -->
                             <button class="btn btn-primary" onclick="animateRotationPresets()" id="rotationAnimateBtn" style="padding: 8px 12px;">
                                 <span>▶ Animate</span>
+                                <div style="font-size: 0.7em; opacity: 0.9; margin-top: 4px;">Cycle</div>
                             </button>
                         </div>
                         <label style="display: flex; align-items: center; gap: 8px; margin-top: 8px; cursor: pointer;">
                             <input type="checkbox" id="applyPresetsToAllCanvas" checked style="width: 16px; height: 16px; cursor: pointer;">
                             <span style="color: var(--text); font-size: 0.9em;">Apply to all canvases (via phase)</span>
                         </label>
-                        <div class="help-text">Enter k value (0 to n-1) to align k/n or (n-k)/n fractions</div>
+                        <div class="help-text">Enter k/d fraction to align (e.g., 1/2, 2/3, 3/4). Aligns to top (90°)</div>
                     </div>
                 </div>
 
@@ -6564,7 +6565,15 @@ Generated: ${new Date().toLocaleString()}
                     }
                     
                     const ringRadius = baseRadius + ringIndex * (maxRadius - baseRadius) / Math.max(1, numRings - 1) * state.ringSpacing;
-                    const ringRotationOffset = (state.ringRotation * Math.PI / 180) * ringIndex;
+                    
+                    // Use per-ring preset rotation if available, otherwise use global rotation
+                    let ringRotationOffset;
+                    if (state.perRingRotations && state.perRingRotations[m] !== undefined) {
+                        ringRotationOffset = state.perRingRotations[m] * Math.PI / 180;
+                    } else {
+                        ringRotationOffset = (state.ringRotation * Math.PI / 180) * ringIndex;
+                    }
+                    
                     const angle = 2 * Math.PI * k / m + phase + ringRotationOffset;
                     const x = cx + ringRadius * Math.cos(angle);
                     const y = cy + ringRadius * Math.sin(angle);
@@ -6643,7 +6652,15 @@ Generated: ${new Date().toLocaleString()}
                         }
                         
                         const ringRadius = baseRadius + ringIndex * (maxRadius - baseRadius) / Math.max(1, numRings - 1) * state.ringSpacing;
-                        const ringRotationOffset = (state.ringRotation * Math.PI / 180) * ringIndex;
+                        
+                        // Use per-ring preset rotation if available, otherwise use global rotation
+                        let ringRotationOffset;
+                        if (state.perRingRotations && state.perRingRotations[m] !== undefined) {
+                            ringRotationOffset = state.perRingRotations[m] * Math.PI / 180;
+                        } else {
+                            ringRotationOffset = (state.ringRotation * Math.PI / 180) * ringIndex;
+                        }
+                        
                         const angle = 2 * Math.PI * k / m + phase + ringRotationOffset;
                         
                         // Calculate label position
@@ -6734,12 +6751,10 @@ Generated: ${new Date().toLocaleString()}
         let rotationPresetAnimation = null;
         
         function updatePresetLabel(presetType) {
-            if (presetType === 'k/n') {
-                const k = parseInt(document.getElementById('knNumerator').value) || 1;
-                document.getElementById('knPresetLabel').textContent = k + '/n';
-            } else if (presetType === '(n-k)/n') {
-                const k = parseInt(document.getElementById('nkNumerator').value) || 1;
-                document.getElementById('nkPresetLabel').textContent = '(n-' + k + ')/n';
+            if (presetType === 'k/d') {
+                const k = parseInt(document.getElementById('kdNumerator').value) || 1;
+                const d = parseInt(document.getElementById('kdDenominator').value) || 2;
+                document.getElementById('kdPresetLabel').textContent = k + '/' + d;
             }
         }
         
@@ -6754,9 +6769,9 @@ Generated: ${new Date().toLocaleString()}
             
             const applyToAll = document.getElementById('applyPresetsToAllCanvas').checked;
             
-            // Get k values from inputs
-            const k_kn = parseInt(document.getElementById('knNumerator').value) || 1;
-            const k_nk = parseInt(document.getElementById('nkNumerator').value) || 1;
+            // Get k/d values from inputs
+            const k = parseInt(document.getElementById('kdNumerator').value) || 1;
+            const d = parseInt(document.getElementById('kdDenominator').value) || 2;
             
             // Calculate rotation for each ring based on preset
             const perRingRotations = {};
@@ -6765,18 +6780,17 @@ Generated: ${new Date().toLocaleString()}
                 let targetAngle;
                 
                 switch(preset) {
-                    case 'k/n':
-                        // Align k/n point to top (90°)
-                        // k/n is at angle 2π*(k/n), we want it at π/2 (90°)
-                        const k_normalized = k_kn % m; // Handle k >= m
-                        targetAngle = 90 - (360 * k_normalized / m);
-                        break;
+                    case 'k/d':
+                        // Align k/d point to top (90°)
+                        // For ring m, we want to align the point at position k/d (scaled to m)
+                        // The point k/d is at angle 2π*(k/d)
+                        // We want it at π/2 (90°)
                         
-                    case '(n-k)/n':
-                        // Align (n-k)/n point to top (90°)
-                        // (n-k)/n is at angle 2π*((n-k)/n), we want it at π/2 (90°)
-                        const nk_normalized = k_nk % m;
-                        targetAngle = 90 - (360 * (m - nk_normalized) / m);
+                        // Calculate the equivalent position on ring m
+                        // If d divides m, we have exact point k*(m/d)/m
+                        // Otherwise, approximate or skip
+                        const fraction = k / d; // Target fraction (0 to 1)
+                        targetAngle = 90 - (360 * fraction);
                         break;
                         
                     case '0':
@@ -6819,7 +6833,7 @@ Generated: ${new Date().toLocaleString()}
             
             // Start animation cycling through presets
             btn.querySelector('span').textContent = '⏸ Stop';
-            const presets = ['k/n', '(n-k)/n', '0'];
+            const presets = ['k/d', '0'];
             let currentPreset = 0;
             
             setRingRotationPreset(presets[currentPreset]);
