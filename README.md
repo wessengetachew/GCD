@@ -5102,13 +5102,14 @@
             }
 
             // Title
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-            ctx.font = 'bold 20px "Fira Code"';
-            ctx.textAlign = 'center';
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-            ctx.fillText('Unit Disk 𝔻', cx, 35);
-            ctx.shadowBlur = 0;
+            // Title removed to avoid duplication on export
+            // ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            // ctx.font = 'bold 20px "Fira Code"';
+            // ctx.textAlign = 'center';
+            // ctx.shadowBlur = 10;
+            // ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+            // ctx.fillText('Unit Disk 𝔻', cx, 35);
+            // ctx.shadowBlur = 0;
 
             // Draw selection highlight if point is selected on this canvas
             if (inspectionState.selectedPoint && inspectionState.selectedPoint.canvasType === 'disk') {
@@ -5624,14 +5625,14 @@
                 });
             }
 
-            // Title
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-            ctx.font = 'bold 20px "Fira Code"';
-            ctx.textAlign = 'center';
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-            ctx.fillText('Upper Half-Plane ℍ', w/2, 35);
-            ctx.shadowBlur = 0;
+            // Title removed to avoid duplication on export
+            // ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            // ctx.font = 'bold 20px "Fira Code"';
+            // ctx.textAlign = 'center';
+            // ctx.shadowBlur = 10;
+            // ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+            // ctx.fillText('Upper Half-Plane ℍ', w/2, 35);
+            // ctx.shadowBlur = 0;
 
             // Draw selection highlight if point is selected on this canvas
             if (inspectionState.selectedPoint && inspectionState.selectedPoint.canvasType === 'cayley') {
@@ -5876,14 +5877,14 @@
                 });
             }
 
-            // Title
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-            ctx.font = 'bold 20px "Fira Code"';
-            ctx.textAlign = 'center';
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-            ctx.fillText('Full Complex Plane ℂ', w/2, 35);
-            ctx.shadowBlur = 0;
+            // Title removed to avoid duplication on export
+            // ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            // ctx.font = 'bold 20px "Fira Code"';
+            // ctx.textAlign = 'center';
+            // ctx.shadowBlur = 10;
+            // ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+            // ctx.fillText('Full Complex Plane ℂ', w/2, 35);
+            // ctx.shadowBlur = 0;
 
             // Restore context if inverted
             if (invertAll) {
@@ -6425,17 +6426,17 @@
                 });
             }
 
-            // Title
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-            ctx.font = 'bold 20px "Fira Code"';
-            ctx.textAlign = 'center';
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-            ctx.fillText('Nested Modular Rings', cx, 35);
-            ctx.font = '12px "Fira Code"';
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-            ctx.fillText(`m = ${state.minRing} to ${state.maxRing}`, cx, 55);
-            ctx.shadowBlur = 0;
+            // Title removed to avoid duplication on export
+            // ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            // ctx.font = 'bold 20px "Fira Code"';
+            // ctx.textAlign = 'center';
+            // ctx.shadowBlur = 10;
+            // ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+            // ctx.fillText('Nested Modular Rings', cx, 35);
+            // ctx.font = '12px "Fira Code"';
+            // ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            // ctx.fillText(`m = ${state.minRing} to ${state.maxRing}`, cx, 55);
+            // ctx.shadowBlur = 0;
 
             // Draw selection highlight if point is selected on this canvas
             if (inspectionState.selectedPoint && inspectionState.selectedPoint.canvasType === 'nested') {
@@ -6915,14 +6916,15 @@
                     drawLegendRight(tempCtx, tempCanvas.width, tempCanvas.height, baseSize, 'all');
                 }
             } else {
-                // For single canvas, make it square to maintain aspect ratio
-                const size = Math.min(width, height);
-                tempCanvas.width = size;
-                tempCanvas.height = size;
+                // For single canvas, extend width for legend on the right
+                const baseSize = Math.min(width, height);
+                const legendSpace = 250; // Extra space for legend
+                tempCanvas.width = baseSize + legendSpace;
+                tempCanvas.height = baseSize;
 
                 // Background
                 tempCtx.fillStyle = '#0a0e27';
-                tempCtx.fillRect(0, 0, size, size);
+                tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
 
                 let sourceCanvas;
                 let title;
@@ -6945,18 +6947,30 @@
                         break;
                 }
 
-                // Draw canvas maintaining square aspect ratio
-                tempCtx.drawImage(sourceCanvas, 0, 0, size, size);
+                // Draw canvas on the left (square)
+                tempCtx.drawImage(sourceCanvas, 0, 0, baseSize, baseSize);
 
-                // Add title
-                drawMainTitle(tempCtx, size, title);
+                // Add title at top center of canvas area
+                const titleScale = baseSize / 1000;
+                const titleFontSize = 28 * titleScale;
+                const titlePadding = 30 * titleScale;
+                
+                tempCtx.fillStyle = '#ffd700';
+                tempCtx.font = `bold ${titleFontSize}px "Fira Code"`;
+                tempCtx.textAlign = 'center';
+                tempCtx.textBaseline = 'top';
+                tempCtx.shadowBlur = 12 * titleScale;
+                tempCtx.shadowColor = 'rgba(255, 215, 0, 0.5)';
+                tempCtx.fillText(title, baseSize / 2, titlePadding);
+                tempCtx.shadowBlur = 0;
 
                 if (includeLegend) {
-                    drawLegend(tempCtx, size, size, canvasSelection);
+                    // Use right-side legend for individual canvas too
+                    drawLegendRight(tempCtx, tempCanvas.width, tempCanvas.height, baseSize, canvasSelection);
                 }
                 
                 if (includeParameters) {
-                    drawParametersInfo(tempCtx, size, size, canvasSelection);
+                    drawParametersInfo(tempCtx, baseSize, baseSize, canvasSelection);
                 }
             }
 
@@ -7445,10 +7459,10 @@
         }
 
         function drawLegendRight(ctx, totalWidth, totalHeight, baseSize, canvasType) {
-            // Position legend in the right extended space (for 2x2 grid exports)
+            // Position legend in the right extended space
             const scale = baseSize / 1920;
             const legendWidth = 230;  // Fixed width for right panel
-            const legendX = baseSize + 10;  // Start just after the 2x2 grid
+            const legendX = baseSize + 10;  // Start just after canvas
             
             const fontSize = 11 * scale;
             const titleSize = 16 * scale;
@@ -7460,40 +7474,93 @@
             let items = [];
             let parameters = [];
             
-            // Define legend content for 2x2 view
-            items = [
-                { type: 'section', text: 'Elements' },
-                { color: CONFIG.colors.farey, text: 'Farey/Coprime' },
-                { color: CONFIG.colors.geodesic, text: 'Geodesics' },
-                { color: CONFIG.colors.prime, text: 'Primes' },
-                { type: 'section', text: 'GCD Colors' },
-                { color: CONFIG.colors.farey, text: 'GCD=1' },
-                { color: '#e74c3c', text: 'GCD=m' },
-                { color: '#00ffff', text: 'GCD=2' },
-                { color: '#9b59b6', text: 'GCD=3' }
-            ];
-            
-            // Add connection legend items if active
-            if (document.getElementById('toggleShowRtoR').checked) {
-                if (items[items.length - 1].type !== 'section') {
-                    items.push({ type: 'section', text: 'Connections' });
+            // Define legend content based on canvas type
+            if (canvasType === 'disk') {
+                items = [
+                    { type: 'section', text: 'Unit Disk' },
+                    { color: CONFIG.colors.disk, text: 'Circle Boundary' },
+                    { color: CONFIG.colors.farey, text: 'Farey Vertices' },
+                    { color: CONFIG.colors.prime, text: 'Primes' }
+                ];
+                parameters = [
+                    `m=${state.modulus}`,
+                    `Primes: ${Math.min(state.numPrimes, state.primes.length)}`,
+                    `θ=${state.phase.toFixed(0)}°`
+                ];
+            } else if (canvasType === 'cayley') {
+                items = [
+                    { type: 'section', text: 'Half-Plane ℍ' },
+                    { color: 'rgba(255, 255, 255, 0.5)', text: 'Real Axis' },
+                    { color: CONFIG.colors.farey, text: 'Farey Points' },
+                    { color: CONFIG.colors.geodesic, text: 'Geodesics' },
+                    { color: CONFIG.colors.cusp, text: 'Cusps' }
+                ];
+                parameters = [
+                    `m=${state.modulus}`,
+                    `Re: [${(-state.cayleyHRange/2).toFixed(1)},${(state.cayleyHRange/2).toFixed(1)}]`,
+                    `Im: [${state.cayleyVOffset.toFixed(1)},${(state.cayleyVRange+state.cayleyVOffset).toFixed(1)}]`
+                ];
+            } else if (canvasType === 'nested') {
+                items = [
+                    { type: 'section', text: 'GCD Colors' },
+                    { color: CONFIG.colors.farey, text: 'GCD=1' },
+                    { color: '#e74c3c', text: 'GCD=m' },
+                    { color: '#00ffff', text: 'GCD=2' },
+                    { color: '#9b59b6', text: 'GCD=3' }
+                ];
+                parameters = [
+                    `Rings: ${state.minRing}–${state.maxRing}`,
+                    `Count: ${state.maxRing - state.minRing + 1}`,
+                    `Mode: ${state.connectionMode}`
+                ];
+            } else if (canvasType === 'fullplane') {
+                items = [
+                    { type: 'section', text: 'Full Plane ℂ' },
+                    { color: CONFIG.colors.farey, text: 'Farey Points' },
+                    { color: CONFIG.colors.geodesic, text: 'Geodesics' },
+                    { color: CONFIG.colors.cusp, text: 'Cusps' }
+                ];
+                parameters = [
+                    `m=${state.modulus}`,
+                    `Transform: ${state.transformType}`,
+                    `Zoom: ${state.cayleyZoom.toFixed(2)}×`
+                ];
+            } else if (canvasType === 'all') {
+                // For 2x2 grid view
+                items = [
+                    { type: 'section', text: 'Elements' },
+                    { color: CONFIG.colors.farey, text: 'Farey/Coprime' },
+                    { color: CONFIG.colors.geodesic, text: 'Geodesics' },
+                    { color: CONFIG.colors.prime, text: 'Primes' },
+                    { type: 'section', text: 'GCD Colors' },
+                    { color: CONFIG.colors.farey, text: 'GCD=1' },
+                    { color: '#e74c3c', text: 'GCD=m' },
+                    { color: '#00ffff', text: 'GCD=2' },
+                    { color: '#9b59b6', text: 'GCD=3' }
+                ];
+                
+                // Add connection legend items if active
+                if (document.getElementById('toggleShowRtoR').checked) {
+                    if (items[items.length - 1].type !== 'section') {
+                        items.push({ type: 'section', text: 'Connections' });
+                    }
+                    items.push({ color: '#00ffff', text: 'r→r' });
                 }
-                items.push({ color: '#00ffff', text: 'r→r' });
-            }
-            if (document.getElementById('toggleShowRtoRplus2n').checked) {
-                if (items[items.length - 1].type !== 'section' && !document.getElementById('toggleShowRtoR').checked) {
-                    items.push({ type: 'section', text: 'Connections' });
+                if (document.getElementById('toggleShowRtoRplus2n').checked) {
+                    if (items[items.length - 1].type !== 'section' && !document.getElementById('toggleShowRtoR').checked) {
+                        items.push({ type: 'section', text: 'Connections' });
+                    }
+                    items.push({ color: 'rgba(255,100,100,0.9)', text: 'r→r+m×2ⁿ' });
                 }
-                items.push({ color: 'rgba(255,100,100,0.9)', text: 'r→r+m×2ⁿ' });
+                
+                parameters = [
+                    `m=${state.modulus}`,
+                    `Primes: ${Math.min(state.numPrimes, state.primes.length)}`,
+                    `Rings: ${state.minRing}–${state.maxRing}`,
+                    `θ=${state.phase.toFixed(0)}°`,
+                    `Mode: ${state.connectionMode}`
+                ];
             }
-            
-            parameters = [
-                `m=${state.modulus}`,
-                `Primes: ${Math.min(state.numPrimes, state.primes.length)}`,
-                `Rings: ${state.minRing}–${state.maxRing}`,
-                `θ=${state.phase.toFixed(0)}°`,
-                `Mode: ${state.connectionMode}`
-            ];
 
             // Calculate legend height
             const totalItems = items.length + parameters.length + 3; // +3 for titles
