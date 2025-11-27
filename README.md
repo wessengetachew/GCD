@@ -7375,153 +7375,174 @@ Generated: ${new Date().toLocaleString()}
         }
 
         function performExport() {
-            const canvasSelection = document.querySelector('input[name="canvas"]:checked').value;
-            const resolution = document.querySelector('input[name="resolution"]:checked').value;
-            const includeLegend = document.getElementById('includeLegend').checked;
-            const includeWatermark = document.getElementById('includeWatermark').checked;
-            const includeParameters = document.getElementById('includeParameters').checked;
-            const includeConnections = document.getElementById('includeConnections').checked;
+            try {
+                const canvasSelection = document.querySelector('input[name="canvas"]:checked').value;
+                const resolution = document.querySelector('input[name="resolution"]:checked').value;
+                const includeLegend = document.getElementById('includeLegend').checked;
+                const includeWatermark = document.getElementById('includeWatermark').checked;
+                const includeParameters = document.getElementById('includeParameters').checked;
+                const includeConnections = document.getElementById('includeConnections').checked;
 
-            let width, height;
-            switch(resolution) {
-                case '1080':
-                    width = 1920;
-                    height = 1080;
-                    break;
-                case '1440':
-                    width = 2560;
-                    height = 1440;
-                    break;
-                case '4k':
-                    width = 3840;
-                    height = 2160;
-                    break;
-                case '8k':
-                    width = 7680;
-                    height = 4320;
-                    break;
-            }
+                console.log('Export started:', canvasSelection, resolution);
 
-            const tempCanvas = document.createElement('canvas');
-            const tempCtx = tempCanvas.getContext('2d');
+                // Validate canvases exist
+                if (!canvases.disk || !canvases.cayley || !canvases.nested || !canvases.fullPlane) {
+                    console.error('Canvases not initialized!');
+                    alert('Error: Canvases not initialized. Please refresh the page.');
+                    return;
+                }
 
-            if (canvasSelection === 'all') {
-                // For all four canvases, use 2x2 grid with square aspect ratio
-                // Extend width to accommodate legend on the right
-                const baseSize = Math.min(width, height);
-                const legendSpace = 250; // Extra space for legend
-                tempCanvas.width = baseSize + legendSpace;
-                tempCanvas.height = baseSize;
-                
-                // Background
-                tempCtx.fillStyle = '#0a0e27';
-                tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+                let width, height;
+                switch(resolution) {
+                    case '1080':
+                        width = 1920;
+                        height = 1080;
+                        break;
+                    case '1440':
+                        width = 2560;
+                        height = 1440;
+                        break;
+                    case '4k':
+                        width = 3840;
+                        height = 2160;
+                        break;
+                    case '8k':
+                        width = 7680;
+                        height = 4320;
+                        break;
+                }
 
-                // Calculate dimensions for 2x2 grid (each quadrant is square)
-                const canvasSize = baseSize / 2;
-                const sourceCanvases = [
-                    { canvas: canvases.disk, title: 'Unit Disk 𝔻', x: 0, y: 0 },
-                    { canvas: canvases.cayley, title: 'Upper Half-Plane ℍ', x: canvasSize, y: 0 },
-                    { canvas: canvases.nested, title: 'Nested Rings ⊚', x: 0, y: canvasSize },
-                    { canvas: canvases.fullPlane, title: 'Full Complex Plane ℂ', x: canvasSize, y: canvasSize }
-                ];
-                
-                sourceCanvases.forEach((item) => {
-                    // Draw canvas (each is square)
-                    tempCtx.drawImage(item.canvas, 
-                        0, 0, item.canvas.width, item.canvas.height,
-                        item.x, item.y, canvasSize, canvasSize);
+                const tempCanvas = document.createElement('canvas');
+                const tempCtx = tempCanvas.getContext('2d');
+
+                if (canvasSelection === 'all') {
+                    console.log('Exporting all four canvases...');
+                    // For all four canvases, use 2x2 grid with square aspect ratio
+                    // Extend width to accommodate legend on the right
+                    const baseSize = Math.min(width, height);
+                    const legendSpace = 250; // Extra space for legend
+                    tempCanvas.width = baseSize + legendSpace;
+                    tempCanvas.height = baseSize;
                     
-                    // Draw title for each canvas - yellow only, positioned higher
-                    const scale = baseSize / 1920;
-                    const fontSize = 18 * scale;
-                    const titleY = item.y + 20 * scale;
-                    const titleX = item.x + canvasSize / 2;
+                    // Background
+                    tempCtx.fillStyle = '#0a0e27';
+                    tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+                    // Calculate dimensions for 2x2 grid (each quadrant is square)
+                    const canvasSize = baseSize / 2;
+                    const sourceCanvases = [
+                        { canvas: canvases.disk, title: 'Unit Disk 𝔻', x: 0, y: 0 },
+                        { canvas: canvases.cayley, title: 'Upper Half-Plane ℍ', x: canvasSize, y: 0 },
+                        { canvas: canvases.nested, title: 'Nested Rings ⊚', x: 0, y: canvasSize },
+                        { canvas: canvases.fullPlane, title: 'Full Complex Plane ℂ', x: canvasSize, y: canvasSize }
+                    ];
                     
-                    tempCtx.fillStyle = '#ffd700';  // Yellow only
-                    tempCtx.font = `bold ${fontSize}px "Fira Code"`;
+                    sourceCanvases.forEach((item) => {
+                        console.log('Drawing canvas:', item.title, item.canvas);
+                        // Draw canvas (each is square)
+                        tempCtx.drawImage(item.canvas, 
+                            0, 0, item.canvas.width, item.canvas.height,
+                            item.x, item.y, canvasSize, canvasSize);
+                        
+                        // Draw title for each canvas - yellow only, positioned higher
+                        const scale = baseSize / 1920;
+                        const fontSize = 18 * scale;
+                        const titleY = item.y + 20 * scale;
+                        const titleX = item.x + canvasSize / 2;
+                        
+                        tempCtx.fillStyle = '#ffd700';  // Yellow only
+                        tempCtx.font = `bold ${fontSize}px "Fira Code"`;
+                        tempCtx.textAlign = 'center';
+                        tempCtx.textBaseline = 'top';
+                        tempCtx.shadowBlur = 8 * scale;
+                        tempCtx.shadowColor = 'rgba(255, 215, 0, 0.4)';
+                        tempCtx.fillText(item.title, titleX, titleY);
+                        tempCtx.shadowBlur = 0;
+                    });
+
+                    if (includeLegend) {
+                        // Draw legend on the right side in the extended space
+                        drawLegendRight(tempCtx, tempCanvas.width, tempCanvas.height, baseSize, 'all');
+                    }
+                } else {
+                    console.log('Exporting single canvas:', canvasSelection);
+                    // For single canvas, extend width for legend on the right
+                    const baseSize = Math.min(width, height);
+                    const legendSpace = 250; // Extra space for legend
+                    tempCanvas.width = baseSize + legendSpace;
+                    tempCanvas.height = baseSize;
+
+                    // Background
+                    tempCtx.fillStyle = '#0a0e27';
+                    tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+                    let sourceCanvas;
+                    let title;
+                    switch(canvasSelection) {
+                        case 'disk':
+                            sourceCanvas = canvases.disk;
+                            title = 'Unit Disk 𝔻 - Farey Triangle';
+                            break;
+                        case 'cayley':
+                            sourceCanvas = canvases.cayley;
+                            title = 'Upper Half-Plane ℍ - Cayley Transform';
+                            break;
+                        case 'nested':
+                            sourceCanvas = canvases.nested;
+                            title = 'Nested Modular Rings';
+                            break;
+                        case 'fullplane':
+                            sourceCanvas = canvases.fullPlane;
+                            title = 'Full Complex Plane ℂ - Complete Cayley View';
+                            break;
+                    }
+
+                    console.log('Source canvas:', sourceCanvas, 'Title:', title);
+
+                    // Draw canvas on the left (square)
+                    tempCtx.drawImage(sourceCanvas, 0, 0, baseSize, baseSize);
+
+                    // Add title at top center of canvas area
+                    const titleScale = baseSize / 1000;
+                    const titleFontSize = 28 * titleScale;
+                    const titlePadding = 30 * titleScale;
+                    
+                    tempCtx.fillStyle = '#ffd700';
+                    tempCtx.font = `bold ${titleFontSize}px "Fira Code"`;
                     tempCtx.textAlign = 'center';
                     tempCtx.textBaseline = 'top';
-                    tempCtx.shadowBlur = 8 * scale;
-                    tempCtx.shadowColor = 'rgba(255, 215, 0, 0.4)';
-                    tempCtx.fillText(item.title, titleX, titleY);
+                    tempCtx.shadowBlur = 12 * titleScale;
+                    tempCtx.shadowColor = 'rgba(255, 215, 0, 0.5)';
+                    tempCtx.fillText(title, baseSize / 2, titlePadding);
                     tempCtx.shadowBlur = 0;
-                });
 
-                if (includeLegend) {
-                    // Draw legend on the right side in the extended space
-                    drawLegendRight(tempCtx, tempCanvas.width, tempCanvas.height, baseSize, 'all');
-                }
-            } else {
-                // For single canvas, extend width for legend on the right
-                const baseSize = Math.min(width, height);
-                const legendSpace = 250; // Extra space for legend
-                tempCanvas.width = baseSize + legendSpace;
-                tempCanvas.height = baseSize;
-
-                // Background
-                tempCtx.fillStyle = '#0a0e27';
-                tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-
-                let sourceCanvas;
-                let title;
-                switch(canvasSelection) {
-                    case 'disk':
-                        sourceCanvas = canvases.disk;
-                        title = 'Unit Disk 𝔻 - Farey Triangle';
-                        break;
-                    case 'cayley':
-                        sourceCanvas = canvases.cayley;
-                        title = 'Upper Half-Plane ℍ - Cayley Transform';
-                        break;
-                    case 'nested':
-                        sourceCanvas = canvases.nested;
-                        title = 'Nested Modular Rings';
-                        break;
-                    case 'fullplane':
-                        sourceCanvas = canvases.fullPlane;
-                        title = 'Full Complex Plane ℂ - Complete Cayley View';
-                        break;
+                    if (includeLegend) {
+                        // Use right-side legend for individual canvas too
+                        drawLegendRight(tempCtx, tempCanvas.width, tempCanvas.height, baseSize, canvasSelection);
+                    }
+                    
+                    if (includeParameters) {
+                        drawParametersInfo(tempCtx, baseSize, baseSize, canvasSelection);
+                    }
                 }
 
-                // Draw canvas on the left (square)
-                tempCtx.drawImage(sourceCanvas, 0, 0, baseSize, baseSize);
-
-                // Add title at top center of canvas area
-                const titleScale = baseSize / 1000;
-                const titleFontSize = 28 * titleScale;
-                const titlePadding = 30 * titleScale;
-                
-                tempCtx.fillStyle = '#ffd700';
-                tempCtx.font = `bold ${titleFontSize}px "Fira Code"`;
-                tempCtx.textAlign = 'center';
-                tempCtx.textBaseline = 'top';
-                tempCtx.shadowBlur = 12 * titleScale;
-                tempCtx.shadowColor = 'rgba(255, 215, 0, 0.5)';
-                tempCtx.fillText(title, baseSize / 2, titlePadding);
-                tempCtx.shadowBlur = 0;
-
-                if (includeLegend) {
-                    // Use right-side legend for individual canvas too
-                    drawLegendRight(tempCtx, tempCanvas.width, tempCanvas.height, baseSize, canvasSelection);
+                // Add watermark if requested
+                if (includeWatermark) {
+                    drawWatermark(tempCtx, tempCanvas.width, tempCanvas.height);
                 }
-                
-                if (includeParameters) {
-                    drawParametersInfo(tempCtx, baseSize, baseSize, canvasSelection);
-                }
+
+                console.log('Creating download link...');
+                const link = document.createElement('a');
+                link.download = `farey-cayley-${canvasSelection}-${resolution}-${Date.now()}.png`;
+                link.href = tempCanvas.toDataURL('image/png', 1.0);
+                link.click();
+
+                console.log('Export complete!');
+                closeExportDialog();
+            } catch (error) {
+                console.error('Export error:', error);
+                alert('Export failed: ' + error.message + '\nCheck console for details.');
             }
-
-            // Add watermark if requested
-            if (includeWatermark) {
-                drawWatermark(tempCtx, tempCanvas.width, tempCanvas.height);
-            }
-
-            const link = document.createElement('a');
-            link.download = `farey-cayley-${canvasSelection}-${resolution}-${Date.now()}.png`;
-            link.href = tempCanvas.toDataURL('image/png', 1.0);
-            link.click();
-
-            closeExportDialog();
         }
 
         function drawParametersInfo(ctx, width, height, canvasType) {
