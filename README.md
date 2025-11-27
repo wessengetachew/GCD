@@ -1532,16 +1532,6 @@
                         </div>
                         <div class="help-text">Align channels: 1/n (coprime), (n-1)/n (last), n/n (zero)</div>
                     </div>
-
-                    <div class="control-item" data-tooltip="Export current view as high-resolution image">
-                        <div class="control-label">
-                            <span>Screenshot & Export</span>
-                        </div>
-                        <button class="btn btn-primary" onclick="showExportDialog()" style="width: 100%; margin-top: 8px;">
-                            <span>📸 Export PNG</span>
-                        </button>
-                        <div class="help-text">High-res export with legend & stats</div>
-                    </div>
                 </div>
 
                 <!-- Zoom Controls -->
