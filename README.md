@@ -6869,16 +6869,18 @@
 
             if (canvasSelection === 'all') {
                 // For all four canvases, use 2x2 grid with square aspect ratio
-                const size = Math.min(width, height);
-                tempCanvas.width = size;
-                tempCanvas.height = size;
+                // Extend width to accommodate legend on the right
+                const baseSize = Math.min(width, height);
+                const legendSpace = 250; // Extra space for legend
+                tempCanvas.width = baseSize + legendSpace;
+                tempCanvas.height = baseSize;
                 
                 // Background
                 tempCtx.fillStyle = '#0a0e27';
-                tempCtx.fillRect(0, 0, size, size);
+                tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
 
                 // Calculate dimensions for 2x2 grid (each quadrant is square)
-                const canvasSize = size / 2;
+                const canvasSize = baseSize / 2;
                 const sourceCanvases = [
                     { canvas: canvases.disk, title: 'Unit Disk 𝔻', x: 0, y: 0 },
                     { canvas: canvases.cayley, title: 'Upper Half-Plane ℍ', x: canvasSize, y: 0 },
@@ -6892,13 +6894,13 @@
                         0, 0, item.canvas.width, item.canvas.height,
                         item.x, item.y, canvasSize, canvasSize);
                     
-                    // Draw title for each canvas - positioned higher to avoid overlap
-                    const scale = size / 1920;
+                    // Draw title for each canvas - yellow only, positioned higher
+                    const scale = baseSize / 1920;
                     const fontSize = 18 * scale;
-                    const titleY = item.y + 20 * scale;  // Moved from 30 to 20
+                    const titleY = item.y + 20 * scale;
                     const titleX = item.x + canvasSize / 2;
                     
-                    tempCtx.fillStyle = '#ffd700';
+                    tempCtx.fillStyle = '#ffd700';  // Yellow only
                     tempCtx.font = `bold ${fontSize}px "Fira Code"`;
                     tempCtx.textAlign = 'center';
                     tempCtx.textBaseline = 'top';
@@ -6909,7 +6911,8 @@
                 });
 
                 if (includeLegend) {
-                    drawLegend(tempCtx, size, size, 'all');
+                    // Draw legend on the right side in the extended space
+                    drawLegendRight(tempCtx, tempCanvas.width, tempCanvas.height, baseSize, 'all');
                 }
             } else {
                 // For single canvas, make it square to maintain aspect ratio
@@ -7067,11 +7070,8 @@
             ctx.fill();
             ctx.stroke();
 
-            // Title text with gradient
-            const textGradient = ctx.createLinearGradient(titleX, titleY, titleX, titleY + titleHeight);
-            textGradient.addColorStop(0, '#ffd700');
-            textGradient.addColorStop(1, '#ffed4e');
-            ctx.fillStyle = textGradient;
+            // Title text - solid yellow
+            ctx.fillStyle = '#ffd700';  // Solid yellow, no gradient
             ctx.font = `bold ${fontSize}px "Fira Code"`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
@@ -7442,6 +7442,159 @@
             ctx.fillText('𝔻 → ℍ Cayley', legendX + padding, currentY);
             
             ctx.restore(); // Remove clipping
+        }
+
+        function drawLegendRight(ctx, totalWidth, totalHeight, baseSize, canvasType) {
+            // Position legend in the right extended space (for 2x2 grid exports)
+            const scale = baseSize / 1920;
+            const legendWidth = 230;  // Fixed width for right panel
+            const legendX = baseSize + 10;  // Start just after the 2x2 grid
+            
+            const fontSize = 11 * scale;
+            const titleSize = 16 * scale;
+            const sectionTitleSize = 13 * scale;
+            const itemHeight = 24 * scale;
+            const symbolSize = 14 * scale;
+            const padding = 12;
+
+            let items = [];
+            let parameters = [];
+            
+            // Define legend content for 2x2 view
+            items = [
+                { type: 'section', text: 'Elements' },
+                { color: CONFIG.colors.farey, text: 'Farey/Coprime' },
+                { color: CONFIG.colors.geodesic, text: 'Geodesics' },
+                { color: CONFIG.colors.prime, text: 'Primes' },
+                { type: 'section', text: 'GCD Colors' },
+                { color: CONFIG.colors.farey, text: 'GCD=1' },
+                { color: '#e74c3c', text: 'GCD=m' },
+                { color: '#00ffff', text: 'GCD=2' },
+                { color: '#9b59b6', text: 'GCD=3' }
+            ];
+            
+            // Add connection legend items if active
+            if (document.getElementById('toggleShowRtoR').checked) {
+                if (items[items.length - 1].type !== 'section') {
+                    items.push({ type: 'section', text: 'Connections' });
+                }
+                items.push({ color: '#00ffff', text: 'r→r' });
+            }
+            if (document.getElementById('toggleShowRtoRplus2n').checked) {
+                if (items[items.length - 1].type !== 'section' && !document.getElementById('toggleShowRtoR').checked) {
+                    items.push({ type: 'section', text: 'Connections' });
+                }
+                items.push({ color: 'rgba(255,100,100,0.9)', text: 'r→r+m×2ⁿ' });
+            }
+            
+            parameters = [
+                `m=${state.modulus}`,
+                `Primes: ${Math.min(state.numPrimes, state.primes.length)}`,
+                `Rings: ${state.minRing}–${state.maxRing}`,
+                `θ=${state.phase.toFixed(0)}°`,
+                `Mode: ${state.connectionMode}`
+            ];
+
+            // Calculate legend height
+            const totalItems = items.length + parameters.length + 3; // +3 for titles
+            const legendHeight = Math.min(totalItems * itemHeight * 0.8 + padding * 4, totalHeight - 40);
+            const legendY = (totalHeight - legendHeight) / 2; // Center vertically
+
+            ctx.save();
+            
+            // Legend background
+            ctx.fillStyle = 'rgba(10, 14, 39, 0.95)';
+            ctx.strokeStyle = 'rgba(255, 215, 0, 0.6)';
+            ctx.lineWidth = 2;
+            ctx.fillRect(legendX, legendY, legendWidth, legendHeight);
+            ctx.strokeRect(legendX, legendY, legendWidth, legendHeight);
+
+            // Title
+            let currentY = legendY + padding + titleSize;
+            ctx.fillStyle = '#ffd700';
+            ctx.font = `bold ${titleSize}px "Fira Code"`;
+            ctx.textAlign = 'left';
+            ctx.fillText('LEGEND', legendX + padding, currentY);
+            
+            ctx.strokeStyle = 'rgba(255, 215, 0, 0.3)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(legendX + padding, currentY + 5);
+            ctx.lineTo(legendX + legendWidth - padding, currentY + 5);
+            ctx.stroke();
+            
+            currentY += itemHeight * 0.7;
+
+            // Draw items
+            items.forEach(item => {
+                if (item.type === 'section') {
+                    // Section header
+                    currentY += itemHeight * 0.3;
+                    ctx.fillStyle = 'rgba(0, 255, 255, 0.8)';
+                    ctx.font = `bold ${sectionTitleSize}px "Fira Code"`;
+                    ctx.fillText(item.text, legendX + padding, currentY);
+                    
+                    ctx.strokeStyle = 'rgba(0, 255, 255, 0.2)';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(legendX + padding, currentY + 3);
+                    ctx.lineTo(legendX + legendWidth - padding, currentY + 3);
+                    ctx.stroke();
+                    
+                    currentY += itemHeight * 0.5;
+                } else {
+                    // Regular item with symbol
+                    ctx.fillStyle = item.color;
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                    ctx.lineWidth = 1;
+                    
+                    // Draw symbol
+                    const symX = legendX + padding;
+                    const symY = currentY - symbolSize * 0.6;
+                    
+                    ctx.beginPath();
+                    ctx.arc(symX + symbolSize/2, symY + symbolSize/2, symbolSize/2, 0, 2 * Math.PI);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Text
+                    ctx.fillStyle = '#e8f1f5';
+                    ctx.font = `${fontSize}px "Fira Code"`;
+                    ctx.fillText(item.text, legendX + padding + symbolSize + 8, currentY);
+                    
+                    currentY += itemHeight * 0.75;
+                }
+            });
+
+            // Parameters section
+            currentY += itemHeight * 0.2;
+            ctx.fillStyle = 'rgba(0, 255, 255, 0.8)';
+            ctx.font = `bold ${sectionTitleSize}px "Fira Code"`;
+            ctx.fillText('Params', legendX + padding, currentY);
+            
+            ctx.strokeStyle = 'rgba(0, 255, 255, 0.2)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(legendX + padding, currentY + 3);
+            ctx.lineTo(legendX + legendWidth - padding, currentY + 3);
+            ctx.stroke();
+            
+            currentY += itemHeight * 0.5;
+
+            ctx.font = `${fontSize * 0.95}px "Fira Code"`;
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+            parameters.forEach(param => {
+                ctx.fillText('• ' + param, legendX + padding, currentY);
+                currentY += itemHeight * 0.6;
+            });
+
+            // Math notation footer
+            currentY += itemHeight * 0.15;
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.font = `italic ${fontSize * 0.85}px "Fira Code"`;
+            ctx.fillText('𝔻 → ℍ → ℂ', legendX + padding, currentY);
+            
+            ctx.restore();
         }
 
         function printDiagnostics() {
