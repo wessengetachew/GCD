@@ -1334,6 +1334,14 @@
                         </select>
                     </div>
 
+                    <div class="control-item" data-tooltip="Controls how fast the visualization rotates when auto-rotate is enabled.">
+                        <div class="control-label">
+                            <span>Animation Speed</span>
+                            <span class="control-value" id="speedValue">1.0×</span>
+                        </div>
+                        <input type="range" id="speedSlider" min="0.1" max="20" value="1" step="0.1">
+                    </div>
+
                     <div class="control-item">
                         <div class="control-label">
                             <span>Frame Rate</span>
@@ -1484,27 +1492,55 @@
                     <div class="control-item" data-tooltip="Rotates all visualizations by this angle. Animated when auto-rotate is enabled.">
                         <div class="control-label">
                             <span>Phase Rotation θ</span>
-                            <span class="control-value" id="phaseValue">180°</span>
+                            <span class="control-value" id="phaseValue">0°</span>
                         </div>
-                        <input type="range" id="phaseSlider" min="0" max="360" value="180" step="0.1">
-                        <input type="number" id="phaseInput" value="180" min="0" max="360" step="0.1" style="margin-top: 8px;" placeholder="Enter angle in degrees">
+                        <input type="range" id="phaseSlider" min="0" max="360" value="0" step="0.1">
+                        <input type="number" id="phaseInput" value="0" min="0" max="360" step="0.1" style="margin-top: 8px;" placeholder="Enter angle in degrees">
                     </div>
 
-                    <div class="control-item" data-tooltip="The modulus for residue classes. Affects prime distribution and ring structure. No upper limit!">
+                    <div class="control-item" data-tooltip="The modulus for residue classes. Farey points shown have denominators that divide m. Example: m=6 shows fractions with denominators 1,2,3,6">
                         <div class="control-label">
                             <span>Modulus m (Any Integer)</span>
                             <span class="control-value" id="modulusDisplay">30</span>
                         </div>
                         <input type="number" id="modulusInput" value="30" min="1" step="1">
-                        <div class="help-text">No upper limit - enter any positive integer</div>
+                        <div class="help-text" id="modulusHelp">Farey: denominators divide m (no upper limit)</div>
+                    </div>
+                </div>
+
+                <div class="control-row">
+                    <div class="control-item" data-tooltip="Quick presets for per-ring rotation to align lowest reduction channels (1/n, (n-1)/n, n/n=0)">
+                        <div class="control-label">
+                            <span>Per-Ring Rotation Presets</span>
+                        </div>
+                        <div style="display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;">
+                            <button class="btn btn-secondary" onclick="setRingRotationPreset('1/n')" style="flex: 1; min-width: 80px; padding: 8px 12px;">
+                                <span>1/n</span>
+                                <div style="font-size: 0.7em; opacity: 0.7;">GCD=1</div>
+                            </button>
+                            <button class="btn btn-secondary" onclick="setRingRotationPreset('(n-1)/n')" style="flex: 1; min-width: 80px; padding: 8px 12px;">
+                                <span>(n-1)/n</span>
+                                <div style="font-size: 0.7em; opacity: 0.7;">Last GCD</div>
+                            </button>
+                            <button class="btn btn-secondary" onclick="setRingRotationPreset('0')" style="flex: 1; min-width: 80px; padding: 8px 12px;">
+                                <span>n/n</span>
+                                <div style="font-size: 0.7em; opacity: 0.7;">0° All</div>
+                            </button>
+                            <button class="btn btn-primary" onclick="animateRotationPresets()" id="rotationAnimateBtn" style="flex: 1; min-width: 80px; padding: 8px 12px;">
+                                <span>▶ Animate</span>
+                            </button>
+                        </div>
+                        <div class="help-text">Align channels: 1/n (coprime), (n-1)/n (last), n/n (zero)</div>
                     </div>
 
-                    <div class="control-item" data-tooltip="Controls how fast the visualization rotates when auto-rotate is enabled.">
+                    <div class="control-item" data-tooltip="Export current view as high-resolution image">
                         <div class="control-label">
-                            <span>Animation Speed</span>
-                            <span class="control-value" id="speedValue">1.0×</span>
+                            <span>Screenshot & Export</span>
                         </div>
-                        <input type="range" id="speedSlider" min="0.1" max="20" value="1" step="0.1">
+                        <button class="btn btn-primary" onclick="showExportDialog()" style="width: 100%; margin-top: 8px;">
+                            <span>📸 Export PNG</span>
+                        </button>
+                        <div class="help-text">High-res export with legend & stats</div>
                     </div>
                 </div>
 
@@ -2228,7 +2264,7 @@
         };
 
         let state = {
-            phase: 180,
+            phase: 0,
             modulus: 30,
             numPrimes: 150,
             primeLimit: 10000,
@@ -2576,6 +2612,17 @@
                     state.modulus = val;
                     document.getElementById('modulusDisplay').textContent = val;
                     document.getElementById('maxFareyOrder').textContent = val;
+                    
+                    // Show divisors for Farey understanding
+                    const divisors = [];
+                    for (let i = 1; i <= val; i++) {
+                        if (val % i === 0) divisors.push(i);
+                    }
+                    const helpText = divisors.length <= 10 
+                        ? `Farey denominators: ${divisors.join(', ')}`
+                        : `Farey: ${divisors.length} denominators (1,2,...,${val})`;
+                    document.getElementById('modulusHelp').textContent = helpText;
+                    
                     updateAll();
                 }
             });
@@ -6157,8 +6204,15 @@ Generated: ${new Date().toLocaleString()}
                 
                 const ringRadius = baseRadius + ringIndex * (maxRadius - baseRadius) / Math.max(1, numRings - 1) * state.ringSpacing;
 
-                // Calculate per-ring rotation
-                const ringRotationOffset = (state.ringRotation * Math.PI / 180) * ringIndex;
+                // Calculate per-ring rotation (use preset if available, otherwise use global rotation)
+                let ringRotationOffset;
+                if (state.perRingRotations && state.perRingRotations[m] !== undefined) {
+                    // Use preset rotation for this specific ring
+                    ringRotationOffset = state.perRingRotations[m] * Math.PI / 180;
+                } else {
+                    // Use global rotation
+                    ringRotationOffset = (state.ringRotation * Math.PI / 180) * ringIndex;
+                }
 
                 // Ring circle
                 if (showRings) {
@@ -6666,6 +6720,79 @@ Generated: ${new Date().toLocaleString()}
             if (inspectionState.selectedPoint && !state.animationId) {
                 requestAnimationFrame(updateAll);
             }
+        }
+
+        // ============================================================
+        // PER-RING ROTATION PRESETS
+        // ============================================================
+        
+        let rotationPresetAnimation = null;
+        
+        function setRingRotationPreset(preset) {
+            // Stop any running preset animation
+            if (rotationPresetAnimation) {
+                clearInterval(rotationPresetAnimation);
+                rotationPresetAnimation = null;
+                const btn = document.getElementById('rotationAnimateBtn');
+                btn.querySelector('span').textContent = '▶ Animate';
+            }
+            
+            // Calculate rotation for each ring based on preset
+            const perRingRotations = {};
+            
+            for (let m = state.minRing; m <= state.maxRing; m++) {
+                let targetAngle;
+                
+                switch(preset) {
+                    case '1/n':
+                        // Align 1/n point to top (90°)
+                        // 1/n is at angle 2π*(1/n), we want it at π/2 (90°)
+                        targetAngle = 90 - (360 / m);
+                        break;
+                        
+                    case '(n-1)/n':
+                        // Align (n-1)/n point to top (90°)
+                        // (n-1)/n is at angle 2π*((n-1)/n), we want it at π/2 (90°)
+                        targetAngle = 90 - (360 * (m - 1) / m);
+                        break;
+                        
+                    case '0':
+                        // Align n/n=0 point to right (0°)
+                        targetAngle = 0;
+                        break;
+                }
+                
+                perRingRotations[m] = targetAngle;
+            }
+            
+            // Apply rotations (store in state for use in rendering)
+            state.perRingRotations = perRingRotations;
+            
+            updateAll();
+        }
+        
+        function animateRotationPresets() {
+            const btn = document.getElementById('rotationAnimateBtn');
+            
+            if (rotationPresetAnimation) {
+                // Stop animation
+                clearInterval(rotationPresetAnimation);
+                rotationPresetAnimation = null;
+                btn.querySelector('span').textContent = '▶ Animate';
+                return;
+            }
+            
+            // Start animation cycling through presets
+            btn.querySelector('span').textContent = '⏸ Stop';
+            const presets = ['1/n', '(n-1)/n', '0'];
+            let currentPreset = 0;
+            
+            setRingRotationPreset(presets[currentPreset]);
+            
+            rotationPresetAnimation = setInterval(() => {
+                currentPreset = (currentPreset + 1) % presets.length;
+                setRingRotationPreset(presets[currentPreset]);
+            }, 2000); // Switch every 2 seconds
         }
 
         // ============================================================
