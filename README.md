@@ -942,9 +942,21 @@
         }
 
         .export-checkbox input[type="checkbox"] {
-            width: 18px;
-            height: 18px;
+            width: 20px;
+            height: 20px;
             cursor: pointer;
+            accent-color: var(--cyan);
+            position: relative;
+        }
+
+        .export-checkbox input[type="checkbox"]:checked + span {
+            color: var(--cyan);
+            font-weight: 600;
+        }
+
+        .export-checkbox input[type="checkbox"]:not(:checked) + span {
+            color: var(--text-dim);
+            opacity: 0.7;
         }
 
         .legend-container {
@@ -1287,6 +1299,18 @@
             </div>
             <div class="controls-body" id="animationPanel" style="display: none;">
                 <div class="control-row">
+                    <div class="control-item">
+                        <div class="control-label">
+                            <span>Record Which Canvas</span>
+                        </div>
+                        <select id="recordCanvas">
+                            <option value="disk">Unit Disk</option>
+                            <option value="cayley">Cayley Plane</option>
+                            <option value="nested">Nested Rings</option>
+                            <option value="fullplane">Full Plane</option>
+                        </select>
+                    </div>
+
                     <div class="control-item">
                         <div class="control-label">
                             <span>Animation Mode</span>
@@ -2841,6 +2865,49 @@
                 } else {
                     stopAnimation();
                 }
+            });
+
+            // Advanced Point Filtering controls
+            document.getElementById('filterGCD').addEventListener('change', e => {
+                const value = e.target.value;
+                state.filters.gcdValue = value === '' ? null : parseInt(value);
+                state.filters.enabled = state.filters.gcdValue !== null || 
+                                       state.filters.modRange[0] !== null || 
+                                       state.filters.modRange[1] !== null;
+                updateAll();
+            });
+
+            document.getElementById('filterModMin').addEventListener('change', e => {
+                const value = e.target.value;
+                state.filters.modRange[0] = value === '' ? null : parseInt(value);
+                state.filters.enabled = state.filters.gcdValue !== null || 
+                                       state.filters.modRange[0] !== null || 
+                                       state.filters.modRange[1] !== null;
+                updateAll();
+            });
+
+            document.getElementById('filterModMax').addEventListener('change', e => {
+                const value = e.target.value;
+                state.filters.modRange[1] = value === '' ? null : parseInt(value);
+                state.filters.enabled = state.filters.gcdValue !== null || 
+                                       state.filters.modRange[0] !== null || 
+                                       state.filters.modRange[1] !== null;
+                updateAll();
+            });
+
+            // Animation & Recording controls
+            document.getElementById('fpsSlider').addEventListener('input', e => {
+                state.animation.fps = parseInt(e.target.value);
+                document.getElementById('fpsValue').textContent = state.animation.fps + ' fps';
+            });
+
+            document.getElementById('durationSlider').addEventListener('input', e => {
+                state.animation.duration = parseInt(e.target.value);
+                document.getElementById('durationValue').textContent = state.animation.duration;
+            });
+
+            document.getElementById('animationMode').addEventListener('change', e => {
+                state.animation.mode = e.target.value;
             });
 
             // Display toggles
@@ -4540,6 +4607,27 @@
             return a;
         }
 
+        // Check if a point passes the advanced filters
+        function passesFilters(num, den) {
+            if (!state.filters.enabled) return true;
+            
+            // GCD filter
+            if (state.filters.gcdValue !== null) {
+                const g = gcd(num, den);
+                if (g !== state.filters.gcdValue) return false;
+            }
+            
+            // Modulus range filter
+            if (state.filters.modRange[0] !== null && den < state.filters.modRange[0]) {
+                return false;
+            }
+            if (state.filters.modRange[1] !== null && den > state.filters.modRange[1]) {
+                return false;
+            }
+            
+            return true;
+        }
+
         function eulerPhi(n) {
             // Check cache first
             if (phiCache.has(n)) {
@@ -4884,19 +4972,21 @@
 
             // Farey triangle
             if (showFarey && state.fareyPoints.length >= 2) {
-                const fareyPoints = state.fareyPoints.map(fp => {
-                    const frac = fp.num / fp.den;
-                    const angle = 2 * Math.PI * frac + phase;
-                    return {
-                        x: cx + r * Math.cos(angle),
-                        y: cy + r * Math.sin(angle),
-                        frac: frac,
-                        label: `${fp.num}/${fp.den}`,
-                        num: fp.num,
-                        den: fp.den,
-                        angle: angle
-                    };
-                });
+                const fareyPoints = state.fareyPoints
+                    .filter(fp => passesFilters(fp.num, fp.den))  // Apply advanced filters
+                    .map(fp => {
+                        const frac = fp.num / fp.den;
+                        const angle = 2 * Math.PI * frac + phase;
+                        return {
+                            x: cx + r * Math.cos(angle),
+                            y: cy + r * Math.sin(angle),
+                            frac: frac,
+                            label: `${fp.num}/${fp.den}`,
+                            num: fp.num,
+                            den: fp.den,
+                            angle: angle
+                        };
+                    });
 
                 // Global r→r connections on unit disk (same denominator)
                 if (document.getElementById('toggleShowRtoR').checked) {
@@ -5402,6 +5492,9 @@
             // Cusps on real axis
             if (showCusps && state.fareyPoints.length > 0) {
                 state.fareyPoints.forEach(fp => {
+                    // Apply advanced filters
+                    if (!passesFilters(fp.num, fp.den)) return;
+                    
                     const frac = fp.num / fp.den;
                     const angle = 2 * Math.PI * frac + phase;
                     const z = { re: Math.cos(angle), im: Math.sin(angle) };
@@ -5431,6 +5524,9 @@
             // Ford circles
             if (showFordCircles && state.fareyPoints.length > 0) {
                 state.fareyPoints.forEach(fp => {
+                    // Apply advanced filters
+                    if (!passesFilters(fp.num, fp.den)) return;
+                    
                     const p = fp.num;
                     const q = fp.den;
                     if (q === 0) return;
@@ -5671,6 +5767,9 @@
             // Transformed Farey points
             if (document.getElementById('toggleFarey').checked && state.fareyPoints.length > 0) {
                 state.fareyPoints.forEach(fp => {
+                    // Apply advanced filters
+                    if (!passesFilters(fp.num, fp.den)) return;
+                    
                     const frac = fp.num / fp.den;
                     const angle = 2 * Math.PI * frac + phase;
                     const z = { re: Math.cos(angle), im: Math.sin(angle) };
@@ -6769,35 +6868,35 @@
             const tempCtx = tempCanvas.getContext('2d');
 
             if (canvasSelection === 'all') {
-                // For all four canvases, use 2x2 grid
-                tempCanvas.width = width;
-                tempCanvas.height = height;
+                // For all four canvases, use 2x2 grid with square aspect ratio
+                const size = Math.min(width, height);
+                tempCanvas.width = size;
+                tempCanvas.height = size;
                 
                 // Background
                 tempCtx.fillStyle = '#0a0e27';
-                tempCtx.fillRect(0, 0, width, height);
+                tempCtx.fillRect(0, 0, size, size);
 
-                // Calculate dimensions for 2x2 grid
-                const canvasWidth = width / 2;
-                const canvasHeight = height / 2;
+                // Calculate dimensions for 2x2 grid (each quadrant is square)
+                const canvasSize = size / 2;
                 const sourceCanvases = [
                     { canvas: canvases.disk, title: 'Unit Disk 𝔻', x: 0, y: 0 },
-                    { canvas: canvases.cayley, title: 'Upper Half-Plane ℍ', x: canvasWidth, y: 0 },
-                    { canvas: canvases.nested, title: 'Nested Rings ⊚', x: 0, y: canvasHeight },
-                    { canvas: canvases.fullPlane, title: 'Full Complex Plane ℂ', x: canvasWidth, y: canvasHeight }
+                    { canvas: canvases.cayley, title: 'Upper Half-Plane ℍ', x: canvasSize, y: 0 },
+                    { canvas: canvases.nested, title: 'Nested Rings ⊚', x: 0, y: canvasSize },
+                    { canvas: canvases.fullPlane, title: 'Full Complex Plane ℂ', x: canvasSize, y: canvasSize }
                 ];
                 
                 sourceCanvases.forEach((item) => {
-                    // Draw canvas
+                    // Draw canvas (each is square)
                     tempCtx.drawImage(item.canvas, 
                         0, 0, item.canvas.width, item.canvas.height,
-                        item.x, item.y, canvasWidth, canvasHeight);
+                        item.x, item.y, canvasSize, canvasSize);
                     
-                    // Draw title for each canvas
-                    const scale = Math.min(width, height) / 1920;
+                    // Draw title for each canvas - positioned higher to avoid overlap
+                    const scale = size / 1920;
                     const fontSize = 18 * scale;
-                    const titleY = item.y + 30 * scale;
-                    const titleX = item.x + canvasWidth / 2;
+                    const titleY = item.y + 20 * scale;  // Moved from 30 to 20
+                    const titleX = item.x + canvasSize / 2;
                     
                     tempCtx.fillStyle = '#ffd700';
                     tempCtx.font = `bold ${fontSize}px "Fira Code"`;
@@ -6809,24 +6908,8 @@
                     tempCtx.shadowBlur = 0;
                 });
 
-                // Add main title at top
-                const scale = Math.min(width, height) / 1920;
-                const mainTitleSize = 32 * scale;
-                const padding = 40 * scale;
-                
-                tempCtx.fillStyle = 'rgba(10, 14, 39, 0.9)';
-                tempCtx.fillRect(width / 2 - 400 * scale, padding / 2, 800 * scale, 60 * scale);
-                
-                tempCtx.fillStyle = '#ffd700';
-                tempCtx.font = `bold ${mainTitleSize}px "Fira Code"`;
-                tempCtx.textAlign = 'center';
-                tempCtx.shadowBlur = 12 * scale;
-                tempCtx.shadowColor = 'rgba(255, 215, 0, 0.5)';
-                tempCtx.fillText('Farey Triangle & Cayley Transform', width / 2, padding);
-                tempCtx.shadowBlur = 0;
-
                 if (includeLegend) {
-                    drawLegend(tempCtx, width, height, 'all');
+                    drawLegend(tempCtx, size, size, 'all');
                 }
             } else {
                 // For single canvas, make it square to maintain aspect ratio
