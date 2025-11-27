@@ -7380,11 +7380,12 @@
             console.log('  Total rings:', state.maxRing - state.minRing + 1);
             
             console.log('\n[FAREY POINTS]:');
+            const phase = state.phase * Math.PI / 180;
             state.fareyPoints.forEach((fp, idx) => {
                 const frac = fp.num / fp.den;
                 const angle = 2 * Math.PI * frac + phase;
                 const z = { re: Math.cos(angle), im: Math.sin(angle) };
-                const w = cayleyTransform(z, state.useAlternateCayley);
+                const w = cayleyTransform(z, state.transformType);
                 console.log(`  ${idx + 1}. ${fp.num}/${fp.den} = ${frac.toFixed(6)}`);
                 console.log(`     Unit Disk:     z = ${z.re.toFixed(6)} + ${z.im.toFixed(6)}i`);
                 console.log(`     Upper Half-Plane: w = ${w.re.toFixed(6)} + ${w.im.toFixed(6)}i`);
