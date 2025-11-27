@@ -1026,11 +1026,6 @@
             <p style="font-family: 'Fira Code', monospace; font-size: 0.85em; color: rgba(255, 255, 255, 0.5); margin-top: 10px;">
                 by Wessen Getachew · Twitter <a href="https://twitter.com/7dview" target="_blank" rel="noopener" style="color: #00ffff; text-decoration: none; transition: all 0.3s;">@7dview</a>
             </p>
-            <div style="margin-top: 15px;">
-                <button class="btn btn-primary" onclick="showExportDialog()" style="padding: 10px 20px; font-size: 1em;">
-                    <span>📸 Export PNG</span>
-                </button>
-            </div>
         </header>
 
         <!-- Introduction Panel -->
@@ -2301,6 +2296,16 @@
                     </button>
                 </div>
             </div>
+        </div>
+
+        <!-- Export Button - Bottom of Page -->
+        <div style="text-align: center; padding: 40px 20px; margin-top: 40px; border-top: 2px solid rgba(255, 215, 0, 0.2);">
+            <button class="btn btn-primary" onclick="showExportDialog()" style="padding: 15px 40px; font-size: 1.2em; box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4);">
+                <span>📸 Export Visualization as PNG</span>
+            </button>
+            <p style="margin-top: 15px; color: rgba(255, 255, 255, 0.5); font-size: 0.9em;">
+                Export individual canvases or all four together in high resolution
+            </p>
         </div>
     </div>
 
