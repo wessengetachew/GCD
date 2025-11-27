@@ -1501,6 +1501,22 @@
                         </div>
                         <input type="range" id="phaseSlider" min="0" max="360" value="0" step="0.1">
                         <input type="number" id="phaseInput" value="0" min="0" max="360" step="0.1" style="margin-top: 8px;" placeholder="Enter angle in degrees">
+                        
+                        <!-- Phase Animation Controls -->
+                        <div style="display: flex; gap: 8px; margin-top: 12px; align-items: center;">
+                            <button class="btn btn-primary" onclick="togglePhaseAnimation()" id="phaseAnimateBtn" style="flex: 1; padding: 8px;">
+                                <span>▶ Animate 360°</span>
+                            </button>
+                            <label style="display: flex; align-items: center; gap: 4px; cursor: pointer; font-size: 0.85em; white-space: nowrap;">
+                                <input type="checkbox" id="phaseLoopCheck" checked style="width: 14px; height: 14px; cursor: pointer;">
+                                <span>Loop</span>
+                            </label>
+                        </div>
+                        <div style="display: flex; gap: 8px; align-items: center; margin-top: 8px;">
+                            <span style="font-size: 0.85em; color: var(--text); opacity: 0.8; min-width: 50px;">Speed:</span>
+                            <input type="range" id="phaseSpeedSlider" min="0.1" max="5" value="1" step="0.1" style="flex: 1;">
+                            <span id="phaseSpeedValue" style="font-size: 0.85em; color: var(--cyan); min-width: 35px;">1.0x</span>
+                        </div>
                     </div>
 
                     <div class="control-item" data-tooltip="The modulus for residue classes. Farey points shown have denominators that divide m. Example: m=6 shows fractions with denominators 1,2,3,6">
@@ -1547,6 +1563,45 @@
                             <span style="color: var(--text); font-size: 0.9em;">Apply to all canvases (via phase)</span>
                         </label>
                         <div class="help-text">Enter k/d fraction to align (e.g., 1/2, 2/3, 3/4). Aligns to top (90°)</div>
+                    </div>
+                </div>
+
+                <!-- Nested Rings Quick Controls -->
+                <div class="control-row">
+                    <div class="control-item" data-tooltip="Starting modulus for the innermost ring">
+                        <div class="control-label">
+                            <span>Min Ring (m_start)</span>
+                            <span class="control-value" id="minRingDisplay2">1</span>
+                        </div>
+                        <input type="number" id="minRingInput2" value="1" min="1" step="1" onchange="syncMinRing(this.value)">
+                    </div>
+
+                    <div class="control-item" data-tooltip="Ending modulus for the outermost ring">
+                        <div class="control-label">
+                            <span>Max Ring (m_end)</span>
+                            <span class="control-value" id="maxRingDisplay2">12</span>
+                        </div>
+                        <input type="number" id="maxRingInput2" value="12" min="1" step="1" onchange="syncMaxRing(this.value)">
+                        <div class="help-text">Unlimited - 100+ rings possible</div>
+                    </div>
+                </div>
+
+                <div class="control-row">
+                    <div class="control-item" data-tooltip="Controls how spread out the rings are">
+                        <div class="control-label">
+                            <span>Ring Spacing Factor</span>
+                            <span class="control-value" id="spacingValue2">1.0</span>
+                        </div>
+                        <input type="range" id="spacingSlider2" min="0.1" max="5" value="1" step="0.1" oninput="syncSpacing(this.value)">
+                    </div>
+
+                    <div class="control-item" data-tooltip="Rotate each individual ring by this angle">
+                        <div class="control-label">
+                            <span>Per-Ring Rotation</span>
+                            <span class="control-value" id="ringRotationValue2">0°</span>
+                        </div>
+                        <input type="range" id="ringRotationSlider2" min="0" max="360" value="0" step="1" oninput="syncRingRotation(this.value)">
+                        <input type="number" id="ringRotationInput2" value="0" min="0" max="360" step="1" style="margin-top: 8px;" placeholder="Degrees per ring" onchange="syncRingRotation(this.value)">
                     </div>
                 </div>
 
@@ -2728,31 +2783,25 @@
             document.getElementById('minRingInput').addEventListener('change', e => {
                 const val = parseInt(e.target.value);
                 if (val > 0) {
-                    state.minRing = val;
-                    document.getElementById('minRingDisplay').textContent = val;
-                    updateAll();
+                    syncMinRing(val);
                 }
             });
 
             document.getElementById('maxRingInput').addEventListener('change', e => {
                 const val = parseInt(e.target.value);
                 if (val >= state.minRing) {
-                    state.maxRing = val;
-                    document.getElementById('maxRingDisplay').textContent = val;
-                    updateAll();
+                    syncMaxRing(val);
                 }
             });
 
             // Spacing slider
             document.getElementById('spacingSlider').addEventListener('input', e => {
-                state.ringSpacing = parseFloat(e.target.value);
-                document.getElementById('spacingValue').textContent = state.ringSpacing.toFixed(1);
-                if (!state.animationId) updateAll();
+                syncSpacing(e.target.value);
             });
 
             // Ring rotation slider
             document.getElementById('ringRotationSlider').addEventListener('input', e => {
-                state.ringRotation = parseFloat(e.target.value);
+                syncRingRotation(e.target.value);
                 document.getElementById('ringRotationValue').textContent = state.ringRotation.toFixed(0) + '°';
                 document.getElementById('ringRotationInput').value = state.ringRotation.toFixed(0);
                 if (!state.animationId) updateAll();
@@ -2762,10 +2811,7 @@
             document.getElementById('ringRotationInput').addEventListener('change', e => {
                 let val = parseFloat(e.target.value);
                 val = ((val % 360) + 360) % 360;
-                state.ringRotation = val;
-                document.getElementById('ringRotationSlider').value = val;
-                document.getElementById('ringRotationValue').textContent = val.toFixed(0) + '°';
-                if (!state.animationId) updateAll();
+                syncRingRotation(val);
             });
 
             // Cayley view controls
@@ -6842,6 +6888,119 @@ Generated: ${new Date().toLocaleString()}
                 currentPreset = (currentPreset + 1) % presets.length;
                 setRingRotationPreset(presets[currentPreset]);
             }, 2000); // Switch every 2 seconds
+        }
+
+        // ============================================================
+        // PHASE ANIMATION
+        // ============================================================
+        
+        let phaseAnimationId = null;
+        let phaseAnimationStart = 0;
+        
+        function togglePhaseAnimation() {
+            const btn = document.getElementById('phaseAnimateBtn');
+            
+            if (phaseAnimationId) {
+                // Stop animation
+                cancelAnimationFrame(phaseAnimationId);
+                phaseAnimationId = null;
+                btn.querySelector('span').textContent = '▶ Animate 360°';
+                return;
+            }
+            
+            // Start animation
+            btn.querySelector('span').textContent = '⏸ Stop';
+            phaseAnimationStart = state.phase;
+            const targetPhase = phaseAnimationStart + 360;
+            const loop = document.getElementById('phaseLoopCheck').checked;
+            const speed = parseFloat(document.getElementById('phaseSpeedSlider').value);
+            const duration = 4000 / speed; // Base duration 4 seconds
+            
+            const startTime = performance.now();
+            
+            function animate(currentTime) {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                
+                // Linear interpolation
+                const currentPhase = phaseAnimationStart + (360 * progress);
+                state.phase = currentPhase % 360;
+                
+                // Update UI
+                document.getElementById('phaseValue').textContent = state.phase.toFixed(0) + '°';
+                document.getElementById('phaseSlider').value = state.phase;
+                document.getElementById('phaseInput').value = state.phase.toFixed(1);
+                
+                updateAll();
+                
+                if (progress < 1) {
+                    phaseAnimationId = requestAnimationFrame(animate);
+                } else if (loop) {
+                    // Restart animation
+                    phaseAnimationStart = state.phase % 360;
+                    requestAnimationFrame((t) => {
+                        startTime = t;
+                        animate(t);
+                    });
+                } else {
+                    // Animation complete
+                    phaseAnimationId = null;
+                    btn.querySelector('span').textContent = '▶ Animate 360°';
+                }
+            }
+            
+            phaseAnimationId = requestAnimationFrame(animate);
+        }
+        
+        // Update speed display
+        document.getElementById('phaseSpeedSlider').addEventListener('input', e => {
+            document.getElementById('phaseSpeedValue').textContent = parseFloat(e.target.value).toFixed(1) + 'x';
+        });
+
+        // ============================================================
+        // CONTROL SYNC FUNCTIONS (for duplicate controls in Basic Parameters)
+        // ============================================================
+        
+        function syncMinRing(value) {
+            const val = parseInt(value);
+            state.minRing = val;
+            document.getElementById('minRingDisplay').textContent = val;
+            document.getElementById('minRingDisplay2').textContent = val;
+            document.getElementById('minRingInput').value = val;
+            document.getElementById('minRingInput2').value = val;
+            updateAll();
+        }
+        
+        function syncMaxRing(value) {
+            const val = parseInt(value);
+            state.maxRing = val;
+            document.getElementById('maxRingDisplay').textContent = val;
+            document.getElementById('maxRingDisplay2').textContent = val;
+            document.getElementById('maxRingInput').value = val;
+            document.getElementById('maxRingInput2').value = val;
+            updateAll();
+        }
+        
+        function syncSpacing(value) {
+            const val = parseFloat(value);
+            state.ringSpacing = val;
+            document.getElementById('spacingValue').textContent = val.toFixed(1);
+            document.getElementById('spacingValue2').textContent = val.toFixed(1);
+            document.getElementById('spacingSlider').value = val;
+            document.getElementById('spacingSlider2').value = val;
+            if (!state.animationId) updateAll();
+        }
+        
+        function syncRingRotation(value) {
+            const val = parseFloat(value);
+            state.ringRotation = val;
+            document.getElementById('ringRotationValue').textContent = val.toFixed(0) + '°';
+            document.getElementById('ringRotationValue2').textContent = val.toFixed(0) + '°';
+            document.getElementById('ringRotationSlider').value = val;
+            document.getElementById('ringRotationSlider2').value = val;
+            document.getElementById('ringRotationInput').value = val.toFixed(0);
+            document.getElementById('ringRotationInput2').value = val.toFixed(0);
+            if (!state.animationId) updateAll();
         }
 
         // ============================================================
