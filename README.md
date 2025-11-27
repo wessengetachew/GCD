@@ -1308,7 +1308,18 @@
                             <option value="cayley">Cayley Plane</option>
                             <option value="nested">Nested Rings</option>
                             <option value="fullplane">Full Plane</option>
+                            <option value="all">All 4 Canvases (2×2)</option>
                         </select>
+                    </div>
+
+                    <div class="control-item">
+                        <div class="control-label">
+                            <span>Include Legend in Frames</span>
+                        </div>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" id="recordWithLegend" checked style="width: 18px; height: 18px; cursor: pointer;">
+                            <span style="color: var(--text); font-size: 0.9em;">Export with legend & stats</span>
+                        </label>
                     </div>
 
                     <div class="control-item">
@@ -4245,27 +4256,48 @@
                 
                 updateAll();
                 
-                // Capture frame from selected canvas
+                // Capture frame from selected canvas with optional legend
                 const canvasSelection = document.getElementById('recordCanvas').value;
-                let canvas;
-                switch(canvasSelection) {
-                    case 'disk':
-                        canvas = canvases.disk;
-                        break;
-                    case 'cayley':
-                        canvas = canvases.cayley;
-                        break;
-                    case 'nested':
-                        canvas = canvases.nested;
-                        break;
-                    case 'fullplane':
-                        canvas = canvases.fullPlane;
-                        break;
-                    default:
-                        canvas = canvases.nested;
+                const includeLegend = document.getElementById('recordWithLegend').checked;
+                
+                let dataURL;
+                
+                if (canvasSelection === 'all') {
+                    // Create composite frame with all 4 canvases
+                    dataURL = captureCompositeFrame(includeLegend);
+                } else {
+                    // Single canvas capture
+                    let sourceCanvas;
+                    let canvasType;
+                    switch(canvasSelection) {
+                        case 'disk':
+                            sourceCanvas = canvases.disk;
+                            canvasType = 'disk';
+                            break;
+                        case 'cayley':
+                            sourceCanvas = canvases.cayley;
+                            canvasType = 'cayley';
+                            break;
+                        case 'nested':
+                            sourceCanvas = canvases.nested;
+                            canvasType = 'nested';
+                            break;
+                        case 'fullplane':
+                            sourceCanvas = canvases.fullPlane;
+                            canvasType = 'fullplane';
+                            break;
+                        default:
+                            sourceCanvas = canvases.nested;
+                            canvasType = 'nested';
+                    }
+                    
+                    if (includeLegend) {
+                        dataURL = captureSingleFrameWithLegend(sourceCanvas, canvasType);
+                    } else {
+                        dataURL = sourceCanvas.toDataURL('image/png');
+                    }
                 }
                 
-                const dataURL = canvas.toDataURL('image/png');
                 state.animation.frames.push(dataURL);
                 
                 currentFrame++;
@@ -4287,6 +4319,90 @@
             if (state.animation.frames.length > 0) {
                 downloadFrames();
             }
+        }
+
+        function captureSingleFrameWithLegend(sourceCanvas, canvasType) {
+            // Create temporary canvas for composite
+            const baseSize = Math.max(sourceCanvas.width, sourceCanvas.height);
+            const legendSpace = 250;
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            
+            tempCanvas.width = baseSize + legendSpace;
+            tempCanvas.height = baseSize;
+            
+            // Background
+            tempCtx.fillStyle = '#0a0e27';
+            tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+            
+            // Draw source canvas on left (square)
+            tempCtx.drawImage(sourceCanvas, 0, 0, baseSize, baseSize);
+            
+            // Draw legend on right
+            drawLegendRight(tempCtx, tempCanvas.width, tempCanvas.height, baseSize, canvasType);
+            
+            return tempCanvas.toDataURL('image/png');
+        }
+
+        function captureCompositeFrame(includeLegend) {
+            // Create 2x2 grid of all canvases
+            const maxDim = Math.max(
+                canvases.disk.width, canvases.disk.height,
+                canvases.cayley.width, canvases.cayley.height,
+                canvases.nested.width, canvases.nested.height,
+                canvases.fullPlane.width, canvases.fullPlane.height
+            );
+            
+            const baseSize = maxDim * 2; // 2x2 grid
+            const legendSpace = includeLegend ? 250 : 0;
+            
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            
+            tempCanvas.width = baseSize + legendSpace;
+            tempCanvas.height = baseSize;
+            
+            // Background
+            tempCtx.fillStyle = '#0a0e27';
+            tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+            
+            const canvasSize = baseSize / 2;
+            
+            // Draw 4 canvases in 2x2 grid
+            const sources = [
+                { canvas: canvases.disk, title: 'Unit Disk 𝔻', x: 0, y: 0 },
+                { canvas: canvases.cayley, title: 'Upper Half-Plane ℍ', x: canvasSize, y: 0 },
+                { canvas: canvases.nested, title: 'Nested Rings ⊚', x: 0, y: canvasSize },
+                { canvas: canvases.fullPlane, title: 'Full Complex Plane ℂ', x: canvasSize, y: canvasSize }
+            ];
+            
+            sources.forEach(item => {
+                tempCtx.drawImage(item.canvas, 
+                    0, 0, item.canvas.width, item.canvas.height,
+                    item.x, item.y, canvasSize, canvasSize);
+                
+                // Draw title
+                const scale = baseSize / 1920;
+                const fontSize = 18 * scale;
+                const titleY = item.y + 20 * scale;
+                const titleX = item.x + canvasSize / 2;
+                
+                tempCtx.fillStyle = '#ffd700';
+                tempCtx.font = `bold ${fontSize}px "Fira Code"`;
+                tempCtx.textAlign = 'center';
+                tempCtx.textBaseline = 'top';
+                tempCtx.shadowBlur = 8 * scale;
+                tempCtx.shadowColor = 'rgba(255, 215, 0, 0.4)';
+                tempCtx.fillText(item.title, titleX, titleY);
+                tempCtx.shadowBlur = 0;
+            });
+            
+            // Draw legend on right if enabled
+            if (includeLegend) {
+                drawLegendRight(tempCtx, tempCanvas.width, tempCanvas.height, baseSize, 'all');
+            }
+            
+            return tempCanvas.toDataURL('image/png');
         }
 
         function downloadFrames() {
@@ -7588,10 +7704,20 @@ Generated: ${new Date().toLocaleString()}
                     { color: CONFIG.colors.geodesic, text: 'Geodesics' },
                     { color: CONFIG.colors.cusp, text: 'Cusps' }
                 ];
+                
+                // Calculate area shown
+                const areaWidth = state.cayleyHRange;
+                const areaHeight = state.cayleyVRange;
+                const area = (areaWidth * areaHeight).toFixed(1);
+                
                 parameters = [
                     `m=${state.modulus}`,
-                    `Re: [${(-state.cayleyHRange/2).toFixed(1)},${(state.cayleyHRange/2).toFixed(1)}]`,
-                    `Im: [${state.cayleyVOffset.toFixed(1)},${(state.cayleyVRange+state.cayleyVOffset).toFixed(1)}]`
+                    `Points: ${state.fareyPoints.length}`,
+                    `Cusps: ${state.fareyPoints.length} on ℝ`,
+                    `Area: ${area} units²`,
+                    `Re: [${(-state.cayleyHRange/2).toFixed(1)}, ${(state.cayleyHRange/2).toFixed(1)}]`,
+                    `Im: [${state.cayleyVOffset.toFixed(1)}, ${(state.cayleyVRange+state.cayleyVOffset).toFixed(1)}]`,
+                    `Zoom: ${state.cayleyZoom.toFixed(2)}×`
                 ];
             } else if (canvasType === 'nested') {
                 items = [
@@ -7601,10 +7727,24 @@ Generated: ${new Date().toLocaleString()}
                     { color: '#00ffff', text: 'GCD=2' },
                     { color: '#9b59b6', text: 'GCD=3' }
                 ];
+                
+                // Calculate total points across all rings
+                let totalPoints = 0;
+                let coprimePoints = 0;
+                for (let m = state.minRing; m <= state.maxRing; m++) {
+                    totalPoints += m;
+                    coprimePoints += eulerPhi(m);
+                }
+                const coprimeDensity = ((coprimePoints / totalPoints) * 100).toFixed(1);
+                
                 parameters = [
                     `Rings: ${state.minRing}–${state.maxRing}`,
-                    `Count: ${state.maxRing - state.minRing + 1}`,
-                    `Mode: ${state.connectionMode}`
+                    `Ring count: ${state.maxRing - state.minRing + 1}`,
+                    `Total points: ${totalPoints}`,
+                    `Coprime: ${coprimePoints} (${coprimeDensity}%)`,
+                    `Spacing: ${state.ringSpacing.toFixed(2)}`,
+                    `Mode: ${state.connectionMode}`,
+                    `Rotation: ${state.ringRotation}°`
                 ];
             } else if (canvasType === 'fullplane') {
                 items = [
@@ -7615,8 +7755,12 @@ Generated: ${new Date().toLocaleString()}
                 ];
                 parameters = [
                     `m=${state.modulus}`,
+                    `Points: ${state.fareyPoints.length}`,
                     `Transform: ${state.transformType}`,
-                    `Zoom: ${state.cayleyZoom.toFixed(2)}×`
+                    `Zoom: ${state.cayleyZoom.toFixed(2)}×`,
+                    `Grid: ${state.cayleyGridDensity.toFixed(1)}`,
+                    `H-Range: ${state.cayleyHRange.toFixed(1)}`,
+                    `V-Offset: ${state.cayleyVOffset.toFixed(1)}`
                 ];
             } else if (canvasType === 'all') {
                 // For 2x2 grid view
@@ -7646,12 +7790,24 @@ Generated: ${new Date().toLocaleString()}
                     items.push({ color: 'rgba(255,100,100,0.9)', text: 'r→r+m×2ⁿ' });
                 }
                 
+                // Calculate comprehensive analysis
+                const coprimeCount = state.fareyPoints.filter(fp => gcd(fp.num, fp.den) === 1).length;
+                let totalRingPoints = 0;
+                let totalCoprimeRingPoints = 0;
+                for (let m = state.minRing; m <= state.maxRing; m++) {
+                    totalRingPoints += m;
+                    totalCoprimeRingPoints += eulerPhi(m);
+                }
+                
                 parameters = [
-                    `m=${state.modulus}`,
-                    `Primes: ${Math.min(state.numPrimes, state.primes.length)}`,
-                    `Rings: ${state.minRing}–${state.maxRing}`,
+                    `m=${state.modulus} (φ=${eulerPhi(state.modulus)})`,
+                    `Farey: ${state.fareyPoints.length} (${coprimeCount} coprime)`,
+                    `Primes: ${Math.min(state.numPrimes, state.primes.length)}/${state.primes.length}`,
+                    `Rings: ${state.minRing}–${state.maxRing} (${state.maxRing - state.minRing + 1} rings)`,
+                    `Ring pts: ${totalRingPoints} (${totalCoprimeRingPoints} coprime)`,
                     `θ=${state.phase.toFixed(0)}°`,
-                    `Mode: ${state.connectionMode}`
+                    `Mode: ${state.connectionMode}`,
+                    `Scheme: ${state.nestedColorScheme}`
                 ];
             }
 
@@ -7747,6 +7903,62 @@ Generated: ${new Date().toLocaleString()}
                 ctx.fillText('• ' + param, legendX + padding, currentY);
                 currentY += itemHeight * 0.6;
             });
+
+            // Analysis section - add mathematical insights
+            if (currentY < legendY + legendHeight - itemHeight * 3) {
+                currentY += itemHeight * 0.3;
+                ctx.fillStyle = 'rgba(255, 215, 0, 0.8)';
+                ctx.font = `bold ${sectionTitleSize}px "Fira Code"`;
+                ctx.fillText('Analysis', legendX + padding, currentY);
+                
+                ctx.strokeStyle = 'rgba(255, 215, 0, 0.2)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(legendX + padding, currentY + 3);
+                ctx.lineTo(legendX + legendWidth - padding, currentY + 3);
+                ctx.stroke();
+                
+                currentY += itemHeight * 0.5;
+
+                ctx.font = `${fontSize * 0.9}px "Fira Code"`;
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+                
+                let insights = [];
+                
+                if (canvasType === 'disk' || canvasType === 'all') {
+                    const coprimeDensity = state.fareyPoints.filter(fp => gcd(fp.num, fp.den) === 1).length / state.fareyPoints.length;
+                    insights.push(`Coprime density: ${(coprimeDensity * 100).toFixed(0)}%`);
+                    
+                    if (state.modulus > 1) {
+                        const phiRatio = (eulerPhi(state.modulus) / state.modulus).toFixed(3);
+                        insights.push(`φ(m)/m = ${phiRatio}`);
+                    }
+                }
+                
+                if (canvasType === 'nested' || canvasType === 'all') {
+                    const ringCount = state.maxRing - state.minRing + 1;
+                    if (ringCount > 1) {
+                        insights.push(`Avg pts/ring: ${(totalRingPoints / ringCount).toFixed(1)}`);
+                    }
+                }
+                
+                if (canvasType === 'cayley') {
+                    const aspectRatio = (state.cayleyHRange / state.cayleyVRange).toFixed(2);
+                    insights.push(`Aspect ratio: ${aspectRatio}:1`);
+                }
+                
+                // Universal insights
+                if (state.filters.enabled) {
+                    insights.push(`⚠ Filters active`);
+                }
+                
+                insights.forEach(insight => {
+                    if (currentY < legendY + legendHeight - itemHeight * 0.8) {
+                        ctx.fillText('▸ ' + insight, legendX + padding, currentY);
+                        currentY += itemHeight * 0.55;
+                    }
+                });
+            }
 
             // Math notation footer
             currentY += itemHeight * 0.15;
