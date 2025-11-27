@@ -4245,8 +4245,26 @@
                 
                 updateAll();
                 
-                // Capture frame from nested canvas (main visualization)
-                const canvas = canvases.nested;
+                // Capture frame from selected canvas
+                const canvasSelection = document.getElementById('recordCanvas').value;
+                let canvas;
+                switch(canvasSelection) {
+                    case 'disk':
+                        canvas = canvases.disk;
+                        break;
+                    case 'cayley':
+                        canvas = canvases.cayley;
+                        break;
+                    case 'nested':
+                        canvas = canvases.nested;
+                        break;
+                    case 'fullplane':
+                        canvas = canvases.fullPlane;
+                        break;
+                    default:
+                        canvas = canvases.nested;
+                }
+                
                 const dataURL = canvas.toDataURL('image/png');
                 state.animation.frames.push(dataURL);
                 
@@ -4272,42 +4290,105 @@
         }
 
         function downloadFrames() {
-            const zip = {
-                frames: state.animation.frames,
-                fps: state.animation.fps,
-                totalFrames: state.animation.frames.length,
-                mode: state.animation.mode
-            };
+            const frameCount = state.animation.frames.length;
             
-            // Create a simple manifest
+            if (frameCount === 0) {
+                alert('No frames to download!');
+                return;
+            }
+            
+            // Show progress
+            const status = document.getElementById('recordingStatus');
+            status.innerHTML = `Creating zip file with ${frameCount} frames...`;
+            
+            // Use JSZip to create a zip file
+            // Load JSZip from CDN if not already loaded
+            if (typeof JSZip === 'undefined') {
+                const script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+                script.onload = () => createZipFile(frameCount);
+                document.head.appendChild(script);
+            } else {
+                createZipFile(frameCount);
+            }
+        }
+        
+        function createZipFile(frameCount) {
+            const zip = new JSZip();
+            
+            // Add manifest file
             const manifest = {
                 frameCount: state.animation.frames.length,
                 fps: state.animation.fps,
                 duration: state.animation.duration,
                 mode: state.animation.mode,
-                timestamp: new Date().toISOString()
+                canvas: document.getElementById('recordCanvas').value,
+                timestamp: new Date().toISOString(),
+                instructions: 'Use ffmpeg to create video: ffmpeg -framerate [fps] -i frame_%04d.png -c:v libx264 -pix_fmt yuv420p output.mp4'
             };
             
-            // Download manifest
-            const blob = new Blob([JSON.stringify(manifest, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `animation-manifest-${Date.now()}.json`;
-            a.click();
-            URL.revokeObjectURL(url);
+            zip.file('manifest.json', JSON.stringify(manifest, null, 2));
             
-            // Download first and last frames as samples
-            if (state.animation.frames.length > 0) {
-                downloadFrame(state.animation.frames[0], 'frame-first.png');
-                downloadFrame(state.animation.frames[state.animation.frames.length - 1], 'frame-last.png');
-            }
+            // Add README
+            const readme = `Animation Frames Export
+========================
+
+Frame Count: ${state.animation.frames.length}
+FPS: ${state.animation.fps}
+Duration: ${state.animation.duration} seconds
+Mode: ${state.animation.mode}
+Canvas: ${document.getElementById('recordCanvas').value}
+
+To create a video with ffmpeg:
+------------------------------
+ffmpeg -framerate ${state.animation.fps} -i frame_%04d.png -c:v libx264 -pix_fmt yuv420p -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" output.mp4
+
+Or for GIF:
+-----------
+ffmpeg -framerate ${state.animation.fps} -i frame_%04d.png -vf "fps=${state.animation.fps},scale=800:-1:flags=lanczos" output.gif
+
+Generated: ${new Date().toLocaleString()}
+`;
             
-            alert(`Recorded ${state.animation.frames.length} frames. Manifest and sample frames downloaded.`);
+            zip.file('README.txt', readme);
             
-            // Reset
-            state.animation.frames = [];
-            document.getElementById('recordingStatus').style.display = 'none';
+            // Add all frames
+            state.animation.frames.forEach((dataURL, index) => {
+                // Convert data URL to blob
+                const base64Data = dataURL.split(',')[1];
+                const frameNumber = String(index + 1).padStart(4, '0');
+                zip.file(`frame_${frameNumber}.png`, base64Data, {base64: true});
+            });
+            
+            // Generate and download zip
+            const status = document.getElementById('recordingStatus');
+            status.innerHTML = `Generating zip file...`;
+            
+            zip.generateAsync({
+                type: 'blob',
+                compression: 'DEFLATE',
+                compressionOptions: { level: 6 }
+            }).then(function(blob) {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `animation-${state.animation.mode}-${frameCount}frames-${Date.now()}.zip`;
+                a.click();
+                URL.revokeObjectURL(url);
+                
+                status.innerHTML = `✓ Downloaded ${frameCount} frames in zip file!`;
+                setTimeout(() => {
+                    status.style.display = 'none';
+                    status.innerHTML = 'Recording: <span id="frameCount">0</span> frames captured';
+                }, 3000);
+                
+                // Reset
+                state.animation.frames = [];
+            }).catch(function(error) {
+                console.error('Error creating zip:', error);
+                alert('Error creating zip file. Check console for details.');
+                status.innerHTML = 'Error creating zip file';
+            });
         }
 
         function downloadFrame(dataURL, filename) {
@@ -7482,10 +7563,22 @@
                     { color: CONFIG.colors.farey, text: 'Farey Vertices' },
                     { color: CONFIG.colors.prime, text: 'Primes' }
                 ];
+                
+                // Calculate coprime fraction
+                const coprimeCount = state.fareyPoints.filter(fp => gcd(fp.num, fp.den) === 1).length;
+                const coprimePct = ((coprimeCount / state.fareyPoints.length) * 100).toFixed(0);
+                
+                // Calculate visible primes
+                const visiblePrimes = Math.min(state.numPrimes, state.primes.length);
+                const primeLimit = state.primes[state.primes.length - 1] || 0;
+                
                 parameters = [
-                    `m=${state.modulus}`,
-                    `Primes: ${Math.min(state.numPrimes, state.primes.length)}`,
-                    `θ=${state.phase.toFixed(0)}°`
+                    `m=${state.modulus} (φ(m)=${eulerPhi(state.modulus)})`,
+                    `Farey: ${state.fareyPoints.length} pts`,
+                    `Coprime: ${coprimeCount} (${coprimePct}%)`,
+                    `Primes: ${visiblePrimes}/${state.primes.length}`,
+                    `Max p: ${primeLimit}`,
+                    `θ=${state.phase.toFixed(0)}° (rotation)`
                 ];
             } else if (canvasType === 'cayley') {
                 items = [
