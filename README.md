@@ -1517,9 +1517,9 @@
                     <div class="control-item" data-tooltip="The modulus for residue classes. Farey points shown have denominators that divide m. Example: m=6 shows fractions with denominators 1,2,3,6">
                         <div class="control-label">
                             <span>Modulus m (Any Integer)</span>
-                            <span class="control-value" id="modulusDisplay">30</span>
+                            <span class="control-value" id="modulusDisplay">101</span>
                         </div>
-                        <input type="number" id="modulusInput" value="30" min="1" step="1">
+                        <input type="number" id="modulusInput" value="101" min="1" step="1">
                         <div class="help-text" id="modulusHelp">Farey: denominators divide m (no upper limit)</div>
                     </div>
                 </div>
@@ -1554,10 +1554,10 @@
                             </button>
                         </div>
                         <label style="display: flex; align-items: center; gap: 8px; margin-top: 8px; cursor: pointer;">
-                            <input type="checkbox" id="applyPresetsToAllCanvas" checked style="width: 16px; height: 16px; cursor: pointer;">
-                            <span style="color: var(--text); font-size: 0.9em;">Apply to all canvases (via phase)</span>
+                            <input type="checkbox" id="applyPresetsToAllCanvas" style="width: 16px; height: 16px; cursor: pointer;">
+                            <span style="color: var(--text); font-size: 0.9em;">Also apply to Phase Rotation (all canvases)</span>
                         </label>
-                        <div class="help-text">Sets per-ring rotation: k/d × 360° (e.g., 1/2 = 180°, 1/4 = 90°, 2/3 = 240°)</div>
+                        <div class="help-text">Sets per-ring rotation: k/d × 360° (e.g., 1/2 = 180°, 1/4 = 90°, 2/3 = 240°). Check box above to also set Phase.</div>
                     </div>
                 </div>
 
@@ -2331,7 +2331,7 @@
 
         let state = {
             phase: 0,
-            modulus: 30,
+            modulus: 101,
             numPrimes: 150,
             primeLimit: 10000,
             animSpeed: 1.0,
@@ -7131,7 +7131,7 @@ Generated: ${new Date().toLocaleString()}
         function resetDefaults() {
             state = {
                 phase: 180,
-                modulus: 30,
+                modulus: 101,
                 numPrimes: 150,
                 primeLimit: 10000,
                 animSpeed: 1.0,
