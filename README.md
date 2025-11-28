@@ -1212,6 +1212,30 @@
                 <canvas id="nestedCanvas" width="1000" height="1000"></canvas>
             </div>
 
+            <div class="canvas-panel" id="reductionPanel" style="display: none;">
+                <div class="panel-header">
+                    <div>
+                        <div class="panel-title">Modular Reduction Projection</div>
+                        <div class="panel-subtitle">Farey Channel Decomposition: r/M → r'/M' where M' = M/gcd(r,M)</div>
+                    </div>
+                    <div class="panel-controls">
+                        <label class="toggle-label" style="margin-right: 10px;">
+                            <input type="checkbox" id="toggleReductionProjections" checked>
+                            <span>Projection Lines</span>
+                        </label>
+                        <label class="toggle-label" style="margin-right: 10px;">
+                            <input type="checkbox" id="toggleReductionChannels" checked>
+                            <span>Channel Rings</span>
+                        </label>
+                        <label class="toggle-label">
+                            <input type="checkbox" id="toggleReductionInvert">
+                            <span>Invert (Inner↔Outer)</span>
+                        </label>
+                    </div>
+                </div>
+                <canvas id="reductionCanvas" width="1000" height="1000"></canvas>
+            </div>
+
             <div class="canvas-panel" id="fullPlanePanel" style="display: none;">
                 <div class="panel-header">
                     <div>
@@ -1595,8 +1619,8 @@
                             <span>Per-Ring Rotation</span>
                             <span class="control-value" id="ringRotationValue2">0°</span>
                         </div>
-                        <input type="range" id="ringRotationSlider2" min="0" max="360" value="0" step="1" oninput="syncRingRotation(this.value)">
-                        <input type="number" id="ringRotationInput2" value="0" min="0" max="360" step="1" style="margin-top: 8px;" placeholder="Degrees per ring" onchange="syncRingRotation(this.value)">
+                        <input type="range" id="ringRotationSlider2" min="0" max="360" value="0" step="0.01" oninput="syncRingRotation(this.value)">
+                        <input type="number" id="ringRotationInput2" value="0" min="0" max="3600" step="0.0000000000000001" style="margin-top: 8px;" placeholder="Degrees per ring" onchange="syncRingRotation(this.value)">
                     </div>
                 </div>
 
@@ -2034,8 +2058,20 @@
                             <option value="prime">Prime Factorization</option>
                             <option value="totient">Totient Class</option>
                             <option value="monochrome">Monochrome (Gold)</option>
+                            <option value="default">Blue-Red Gradient</option>
+                            <option value="fire">Fire (Black-Red-Orange-Yellow)</option>
+                            <option value="plasma">Plasma (Purple-Pink-Yellow)</option>
+                            <option value="viridis">Viridis (Purple-Green-Yellow)</option>
+                            <option value="cool">Cool (Cyan-Blue-Magenta)</option>
+                            <option value="thermal">Thermal (Black-Red-White)</option>
+                            <option value="ocean">Ocean (Deep Blue to Cyan)</option>
+                            <option value="sunset">Sunset (Purple-Orange-Gold)</option>
+                            <option value="forest">Forest (Dark Green to Light)</option>
+                            <option value="rainbow">Rainbow (Full Spectrum)</option>
+                            <option value="grayscale">Grayscale</option>
                         </select>
-                        <div class="help-text">Different color schemes reveal different patterns</div>
+                        <div class="help-text">Different color schemes reveal different patterns. Gradient schemes (fire, plasma, viridis, etc.) color by angular position</div>
+                        <div id="colorSchemePreview" style="width: 100%; height: 20px; margin-top: 8px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.1);"></div>
                     </div>
 
                     <div class="control-item" data-tooltip="Draw lines connecting points based on mathematical relationships in the nested rings view.">
@@ -2329,6 +2365,12 @@
             }
         };
 
+        // ============================================================
+        // ADVANCED COLOR SCHEMES
+        // ============================================================
+        
+
+
         let state = {
             phase: 0,
             modulus: 101,
@@ -2438,6 +2480,7 @@
             regeneratePrimes();
             setupEventListeners();
             setupInteractiveInspection(); // NEW: Set up click/hover handlers
+            updateColorSchemePreview(); // Initialize color scheme preview
             updateAll();
             setTimeout(() => {
                 document.getElementById('loading').classList.add('hidden');
@@ -2906,6 +2949,7 @@
 
             document.getElementById('nestedColorScheme').addEventListener('change', e => {
                 state.nestedColorScheme = e.target.value;
+                updateColorSchemePreview();
                 updateAll();
             });
 
@@ -5158,6 +5202,25 @@ Generated: ${new Date().toLocaleString()}
                     const opacity = g === 1 ? 0.9 : 0.3;
                     return `rgba(255, 215, 0, ${opacity})`;
                 
+                // Advanced gradient schemes
+                case 'default':
+                case 'fire':
+                case 'plasma':
+                case 'viridis':
+                case 'cool':
+                case 'thermal':
+                case 'ocean':
+                case 'sunset':
+                case 'forest':
+                case 'rainbow':
+                case 'grayscale':
+                    // Use angle position normalized to 0-1 for gradient
+                    const t = (angle / (2 * Math.PI) + 1) % 1;
+                    const color = getColorFromScheme(scheme, t);
+                    // Adjust opacity based on GCD
+                    const gradientOpacity = g === 1 ? 0.95 : 0.5;
+                    return `rgba(${color.r}, ${color.g}, ${color.b}, ${gradientOpacity})`;
+                
                 default:
                     return getGCDColor(g, m);
             }
@@ -6774,6 +6837,106 @@ Generated: ${new Date().toLocaleString()}
             }
         }
 
+        // Advanced color scheme system
+        const colorSchemes = {
+            default: [
+                {pos: 0, r: 100, g: 200, b: 255},
+                {pos: 1, r: 255, g: 100, b: 100}
+            ],
+            fire: [
+                {pos: 0, r: 0, g: 0, b: 0},
+                {pos: 0.33, r: 139, g: 0, b: 0},
+                {pos: 0.66, r: 255, g: 69, b: 0},
+                {pos: 0.85, r: 255, g: 165, b: 0},
+                {pos: 1, r: 255, g: 255, b: 100}
+            ],
+            plasma: [
+                {pos: 0, r: 13, g: 8, b: 135},
+                {pos: 0.25, r: 126, g: 3, b: 168},
+                {pos: 0.5, r: 204, g: 71, b: 120},
+                {pos: 0.75, r: 248, g: 149, b: 64},
+                {pos: 1, r: 240, g: 249, b: 33}
+            ],
+            viridis: [
+                {pos: 0, r: 68, g: 1, b: 84},
+                {pos: 0.25, r: 59, g: 82, b: 139},
+                {pos: 0.5, r: 33, g: 145, b: 140},
+                {pos: 0.75, r: 94, g: 201, b: 98},
+                {pos: 1, r: 253, g: 231, b: 37}
+            ],
+            cool: [
+                {pos: 0, r: 0, g: 255, b: 255},
+                {pos: 0.5, r: 100, g: 100, b: 255},
+                {pos: 1, r: 255, g: 0, b: 255}
+            ],
+            thermal: [
+                {pos: 0, r: 0, g: 0, b: 0},
+                {pos: 0.33, r: 139, g: 0, b: 0},
+                {pos: 0.66, r: 255, g: 140, b: 0},
+                {pos: 0.9, r: 255, g: 255, b: 0},
+                {pos: 1, r: 255, g: 255, b: 255}
+            ],
+            ocean: [
+                {pos: 0, r: 0, g: 0, b: 51},
+                {pos: 0.25, r: 0, g: 51, b: 102},
+                {pos: 0.5, r: 0, g: 102, b: 204},
+                {pos: 0.75, r: 51, g: 153, b: 255},
+                {pos: 1, r: 153, g: 255, b: 255}
+            ],
+            sunset: [
+                {pos: 0, r: 25, g: 25, b: 112},
+                {pos: 0.3, r: 138, g: 43, b: 226},
+                {pos: 0.6, r: 255, g: 99, b: 71},
+                {pos: 0.85, r: 255, g: 165, b: 0},
+                {pos: 1, r: 255, g: 255, b: 153}
+            ],
+            forest: [
+                {pos: 0, r: 0, g: 51, b: 0},
+                {pos: 0.33, r: 34, g: 139, b: 34},
+                {pos: 0.66, r: 144, g: 238, b: 144},
+                {pos: 1, r: 255, g: 255, b: 224}
+            ],
+            rainbow: [
+                {pos: 0, r: 148, g: 0, b: 211},
+                {pos: 0.17, r: 75, g: 0, b: 130},
+                {pos: 0.33, r: 0, g: 0, b: 255},
+                {pos: 0.5, r: 0, g: 255, b: 0},
+                {pos: 0.67, r: 255, g: 255, b: 0},
+                {pos: 0.83, r: 255, g: 127, b: 0},
+                {pos: 1, r: 255, g: 0, b: 0}
+            ],
+            grayscale: [
+                {pos: 0, r: 0, g: 0, b: 0},
+                {pos: 1, r: 255, g: 255, b: 255}
+            ]
+        };
+        
+        function getColorFromScheme(scheme, t) {
+            // Get the color scheme, default to 'default' if not found
+            const colors = colorSchemes[scheme] || colorSchemes.default;
+            
+            // Clamp t to [0, 1]
+            t = Math.max(0, Math.min(1, t));
+            
+            // Find the two colors to interpolate between
+            for (let i = 0; i < colors.length - 1; i++) {
+                if (t >= colors[i].pos && t <= colors[i + 1].pos) {
+                    // Calculate local t within this segment
+                    const localT = (t - colors[i].pos) / (colors[i + 1].pos - colors[i].pos);
+                    
+                    // Linear interpolation
+                    return {
+                        r: Math.round(colors[i].r + (colors[i + 1].r - colors[i].r) * localT),
+                        g: Math.round(colors[i].g + (colors[i + 1].g - colors[i].g) * localT),
+                        b: Math.round(colors[i].b + (colors[i + 1].b - colors[i].b) * localT)
+                    };
+                }
+            }
+            
+            // If t is at or beyond the end, return the last color
+            return colors[colors.length - 1];
+        }
+        
         // Format rotation value with smart precision (up to 17 decimal places)
         function formatRotationValue(value) {
             // If it's a whole number, show no decimals
@@ -6795,6 +6958,37 @@ Generated: ${new Date().toLocaleString()}
             }
             
             return str;
+        }
+
+        // Update color scheme preview gradient
+        function updateColorSchemePreview() {
+            const scheme = state.nestedColorScheme;
+            const previewEl = document.getElementById('colorSchemePreview');
+            
+            if (!previewEl) return;
+            
+            // For non-gradient schemes, hide preview
+            const gradientSchemes = ['default', 'fire', 'plasma', 'viridis', 'cool', 'thermal', 'ocean', 'sunset', 'rainbow', 'grayscale'];
+            
+            if (!gradientSchemes.includes(scheme)) {
+                previewEl.style.display = 'none';
+                return;
+            }
+            
+            previewEl.style.display = 'block';
+            
+            // Create gradient preview
+            const steps = 50;
+            let gradient = 'linear-gradient(to right';
+            
+            for (let i = 0; i <= steps; i++) {
+                const t = i / steps;
+                const color = getColorFromScheme(scheme, t);
+                gradient += `, rgb(${color.r}, ${color.g}, ${color.b})`;
+            }
+            
+            gradient += ')';
+            previewEl.style.background = gradient;
         }
 
         function updateAll() {
