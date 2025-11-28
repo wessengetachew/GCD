@@ -1218,20 +1218,6 @@
                         <div class="panel-title">Modular Reduction Projection</div>
                         <div class="panel-subtitle">Farey Channel Decomposition: r/M → r'/M' where M' = M/gcd(r,M)</div>
                     </div>
-                    <div class="panel-controls">
-                        <label class="toggle-label" style="margin-right: 10px;">
-                            <input type="checkbox" id="toggleReductionProjections" checked>
-                            <span>Projection Lines</span>
-                        </label>
-                        <label class="toggle-label" style="margin-right: 10px;">
-                            <input type="checkbox" id="toggleReductionChannels" checked>
-                            <span>Channel Rings</span>
-                        </label>
-                        <label class="toggle-label">
-                            <input type="checkbox" id="toggleReductionInvert">
-                            <span>Invert (Inner↔Outer)</span>
-                        </label>
-                    </div>
                 </div>
                 <canvas id="reductionCanvas" width="1000" height="1000"></canvas>
             </div>
@@ -1521,6 +1507,27 @@
                         </div>
                         <input type="range" id="phaseSlider" min="0" max="360" value="0" step="0.1">
                         <input type="number" id="phaseInput" value="0" min="0" max="360" step="0.00000000000000001" style="margin-top: 8px;" placeholder="Enter angle in degrees (17 decimal precision)">
+                        
+                        <!-- Angle Presets Dropdown -->
+                        <div style="margin-top: 8px;">
+                            <label style="font-size: 0.85em; color: #8b949e; display: block; margin-bottom: 4px;">Famous Angle Presets</label>
+                            <select id="anglePresets" onchange="applyAnglePreset(this.value)" style="width: 100%; padding: 6px; background: #0d1117; border: 1px solid #30363d; border-radius: 4px; color: #c9d1d9; font-size: 0.9em;">
+                                <option value="">-- Select Preset --</option>
+                                <option value="0">0° (Origin)</option>
+                                <option value="30">30° (Standard)</option>
+                                <option value="45">45° (Diagonal)</option>
+                                <option value="60">60° (Hexagonal)</option>
+                                <option value="90">90° (Quadrant)</option>
+                                <option value="120">120° (Trisection)</option>
+                                <option value="137.50776405003785">137.508° (Golden Angle φ)</option>
+                                <option value="180">180° (Half Turn)</option>
+                                <option value="222.49223594996215">222.492° (Conjugate Golden)</option>
+                                <option value="270">270° (Three-Quarter)</option>
+                                <option value="360">360° (Full Circle)</option>
+                                <option value="51.82729237329962">51.827° (Fibonacci Spiral)</option>
+                                <option value="26.56505117707799">26.565° (Silver Angle)</option>
+                            </select>
+                        </div>
                         
                         <!-- Phase Animation Controls -->
                         <div style="display: flex; gap: 8px; margin-top: 12px; align-items: center;">
@@ -2276,6 +2283,30 @@
                     <label for="toggleReduction" class="toggle-item">
                         <div class="toggle-switch"></div>
                         <span class="toggle-label">Modular Reduction View</span>
+                    </label>
+
+                    <input type="checkbox" id="toggleReductionProjections" checked>
+                    <label for="toggleReductionProjections" class="toggle-item">
+                        <div class="toggle-switch"></div>
+                        <span class="toggle-label">Reduction: Projection Lines</span>
+                    </label>
+
+                    <input type="checkbox" id="toggleReductionChannels" checked>
+                    <label for="toggleReductionChannels" class="toggle-item">
+                        <div class="toggle-switch"></div>
+                        <span class="toggle-label">Reduction: Channel Rings</span>
+                    </label>
+
+                    <input type="checkbox" id="toggleReductionInvert">
+                    <label for="toggleReductionInvert" class="toggle-item">
+                        <div class="toggle-switch"></div>
+                        <span class="toggle-label">Reduction: Invert (Inner↔Outer)</span>
+                    </label>
+
+                    <input type="checkbox" id="toggleReductionStats" checked>
+                    <label for="toggleReductionStats" class="toggle-item">
+                        <div class="toggle-switch"></div>
+                        <span class="toggle-label">Reduction: Show Statistics Overlay</span>
                     </label>
 
                     <input type="checkbox" id="toggleAnimate">
@@ -3136,7 +3167,7 @@
             });
             
             // Reduction canvas toggles
-            ['toggleReductionProjections', 'toggleReductionChannels', 'toggleReductionInvert'].forEach(id => {
+            ['toggleReductionProjections', 'toggleReductionChannels', 'toggleReductionInvert', 'toggleReductionStats'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) {
                     el.addEventListener('change', updateAll);
@@ -5054,6 +5085,23 @@ Generated: ${new Date().toLocaleString()}
             updateAll();
         }
 
+        function applyAnglePreset(value) {
+            if (!value) return; // Empty selection
+            
+            const angle = parseFloat(value);
+            state.phase = angle;
+            
+            // Update all controls
+            document.getElementById('phaseSlider').value = angle;
+            document.getElementById('phaseInput').value = angle;
+            document.getElementById('phaseValue').textContent = angle.toFixed(17) + '°';
+            
+            // Reset dropdown to placeholder
+            document.getElementById('anglePresets').value = '';
+            
+            updateAll();
+        }
+
         // Check if a point passes the advanced filters
         function passesFilters(num, den) {
             if (!state.filters.enabled) return true;
@@ -6266,6 +6314,95 @@ Generated: ${new Date().toLocaleString()}
                 ctx.fill();
                 ctx.globalAlpha = 1;
             });
+
+            // Draw statistics overlay
+            const showStats = document.getElementById('toggleReductionStats')?.checked ?? true;
+            if (showStats) {
+                // Calculate statistics
+                let coprimeCount = 0;
+                let nonCoprimeCount = 0;
+                for (let r = 0; r < M; r++) {
+                    if (gcd(r, M) === 1) coprimeCount++;
+                    else nonCoprimeCount++;
+                }
+                const coprimePct = ((coprimeCount / M) * 100).toFixed(1);
+                const factorization = formatPrimeFactorization(M);
+                const primeStatus = isPrime(M) ? 'Prime' : 'Composite';
+                
+                // Stats box in top-right corner
+                const boxW = 280;
+                const boxH = 220;
+                const boxX = w - boxW - 20;
+                const boxY = 20;
+                
+                ctx.save();
+                
+                // Background with border
+                ctx.fillStyle = 'rgba(10, 14, 39, 0.92)';
+                ctx.strokeStyle = 'rgba(255, 215, 0, 0.7)';
+                ctx.lineWidth = 2;
+                ctx.fillRect(boxX, boxY, boxW, boxH);
+                ctx.strokeRect(boxX, boxY, boxW, boxH);
+                
+                // Title
+                ctx.fillStyle = '#ffd700';
+                ctx.font = 'bold 16px Fira Code';
+                ctx.textAlign = 'left';
+                ctx.fillText('MODULAR REDUCTION', boxX + 15, boxY + 25);
+                
+                // Separator line
+                ctx.strokeStyle = 'rgba(255, 215, 0, 0.4)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(boxX + 15, boxY + 35);
+                ctx.lineTo(boxX + boxW - 15, boxY + 35);
+                ctx.stroke();
+                
+                // Statistics
+                ctx.font = '13px Fira Code';
+                ctx.fillStyle = '#c9d1d9';
+                let yPos = boxY + 55;
+                const lineHeight = 18;
+                
+                ctx.fillText(`M = ${M}`, boxX + 15, yPos);
+                yPos += lineHeight;
+                
+                ctx.fillStyle = '#8b949e';
+                ctx.fillText(`Type: ${primeStatus}`, boxX + 15, yPos);
+                yPos += lineHeight;
+                
+                ctx.fillText(`${factorization}`, boxX + 15, yPos);
+                yPos += lineHeight + 5;
+                
+                // Coprime section
+                ctx.fillStyle = '#00ffff';
+                ctx.fillText(`φ(M) = ${coprimeCount}`, boxX + 15, yPos);
+                yPos += lineHeight;
+                
+                ctx.fillStyle = '#8b949e';
+                ctx.fillText(`Coprime: ${coprimePct}%`, boxX + 15, yPos);
+                yPos += lineHeight + 5;
+                
+                // Reducible section
+                ctx.fillStyle = '#ff1493';
+                ctx.fillText(`Reducible: ${nonCoprimeCount}`, boxX + 15, yPos);
+                yPos += lineHeight;
+                
+                ctx.fillStyle = '#8b949e';
+                ctx.fillText(`Non-coprime: ${(100-parseFloat(coprimePct)).toFixed(1)}%`, boxX + 15, yPos);
+                yPos += lineHeight + 5;
+                
+                // Channels
+                ctx.fillStyle = '#ffd700';
+                ctx.fillText(`Channels: ${divisors.length}`, boxX + 15, yPos);
+                yPos += lineHeight;
+                
+                ctx.fillStyle = '#8b949e';
+                ctx.font = '11px Fira Code';
+                ctx.fillText(`(divisors of M)`, boxX + 15, yPos);
+                
+                ctx.restore();
+            }
 
             // Draw watermark
             ctx.save();
@@ -7784,6 +7921,10 @@ Generated: ${new Date().toLocaleString()}
                                     <span>Nested Rings Only</span>
                                 </label>
                                 <label class="export-radio">
+                                    <input type="radio" name="canvas" value="reduction">
+                                    <span>Modular Reduction Only</span>
+                                </label>
+                                <label class="export-radio">
                                     <input type="radio" name="canvas" value="fullplane">
                                     <span>Full Complex Plane Only</span>
                                 </label>
@@ -8928,19 +9069,79 @@ Generated: ${new Date().toLocaleString()}
                     `H-Range: ${state.cayleyHRange.toFixed(1)}`,
                     `V-Offset: ${state.cayleyVOffset.toFixed(1)}`
                 ];
-            } else if (canvasType === 'all') {
-                console.log('Drawing legend for ALL canvases');
-                // For 2x2 grid view
+            } else if (canvasType === 'reduction') {
+                // Reduction canvas legend with comprehensive statistics
+                const M = state.modulus;
+                
+                // Calculate divisors (Farey channels)
+                const divisors = [];
+                for (let d = 1; d <= M; d++) {
+                    if (M % d === 0) divisors.push(d);
+                }
+                
+                // Count coprime and non-coprime on outer ring
+                let coprimeCount = 0;
+                let nonCoprimeCount = 0;
+                for (let r = 0; r < M; r++) {
+                    if (gcd(r, M) === 1) {
+                        coprimeCount++;
+                    } else {
+                        nonCoprimeCount++;
+                    }
+                }
+                
+                const coprimePct = ((coprimeCount / M) * 100).toFixed(1);
+                const factorization = formatPrimeFactorization(M);
+                const primeStatus = isPrime(M) ? 'Prime' : 'Composite';
+                
                 items = [
-                    { type: 'section', text: 'Elements' },
+                    { type: 'section', text: 'Modular Reduction' },
+                    { color: '#00ffff', text: 'Coprime (gcd=1)' },
+                    { color: '#ff1493', text: 'Reducible (gcd>1)' },
+                    { color: '#ff0000', text: 'Projection Lines' },
+                    { color: '#ffd700', text: 'Channel Rings' },
+                    { type: 'section', text: 'Farey Channels' },
+                    { color: '#ffd700', text: `${divisors.length} channels (divisors of M)` }
+                ];
+                
+                parameters = [
+                    `Modulus: M = ${M}`,
+                    `Type: ${primeStatus}`,
+                    `Factorization: ${factorization}`,
+                    `φ(M) = ${coprimeCount}`,
+                    `Coprime: ${coprimeCount} (${coprimePct}%)`,
+                    `Reducible: ${nonCoprimeCount} (${(100-parseFloat(coprimePct)).toFixed(1)}%)`,
+                    `Channels: ${divisors.length} divisors`,
+                    `θ=${state.phase.toFixed(17)}°`,
+                    `Ring Rot: ${state.ringRotation.toFixed(2)}°`,
+                    `Line Thick: ${state.globalLineThickness.toFixed(2)}`
+                ];
+            } else if (canvasType === 'all') {
+                console.log('Drawing legend for ALL 5 canvases');
+                // For 2×3 grid view with reduction
+                
+                const M = state.modulus;
+                let coprimeM = 0;
+                let nonCoprimeM = 0;
+                for (let r = 0; r < M; r++) {
+                    if (gcd(r, M) === 1) coprimeM++;
+                    else nonCoprimeM++;
+                }
+                
+                items = [
+                    { type: 'section', text: 'Disk & Cayley' },
                     { color: CONFIG.colors.farey, text: 'Farey/Coprime' },
                     { color: CONFIG.colors.geodesic, text: 'Geodesics' },
                     { color: CONFIG.colors.prime, text: 'Primes' },
-                    { type: 'section', text: 'GCD Colors' },
+                    { type: 'section', text: 'Nested Rings GCD' },
                     { color: CONFIG.colors.farey, text: 'GCD=1' },
                     { color: '#e74c3c', text: 'GCD=m' },
                     { color: '#00ffff', text: 'GCD=2' },
-                    { color: '#9b59b6', text: 'GCD=3' }
+                    { color: '#9b59b6', text: 'GCD=3' },
+                    { type: 'section', text: 'Reduction' },
+                    { color: '#00ffff', text: 'Coprime' },
+                    { color: '#ff1493', text: 'Reducible' },
+                    { color: '#ff0000', text: 'Projections' }
                 ];
                 
                 // Add connection legend items if active
@@ -8972,13 +9173,19 @@ Generated: ${new Date().toLocaleString()}
                 }
                 console.log('Total ring points:', totalRingPoints, 'Coprime:', totalCoprimeRingPoints);
                 
+                const coprimePctM = ((coprimeM / M) * 100).toFixed(1);
+                
                 parameters = [
                     `m=${state.modulus} (φ=${eulerPhi(state.modulus)})`,
+                    `Type: ${isPrime(M) ? 'Prime' : formatPrimeFactorization(M)}`,
                     `Farey: ${state.fareyPoints.length} (${coprimeCount} coprime)`,
+                    `Reduction: ${coprimeM} coprime (${coprimePctM}%)`,
                     `Primes: ${Math.min(state.numPrimes, state.primes.length)}/${state.primes.length}`,
                     `Rings: ${state.minRing}–${state.maxRing} (${state.maxRing - state.minRing + 1} rings)`,
                     `Ring pts: ${totalRingPoints} (${totalCoprimeRingPoints} coprime)`,
-                    `θ=${state.phase.toFixed(0)}°`,
+                    `θ=${state.phase.toFixed(17)}°`,
+                    `Ring Rot: ${state.ringRotation.toFixed(2)}°`,
+                    `Line Thick: ${state.globalLineThickness.toFixed(2)}`,
                     `Mode: ${state.connectionMode}`,
                     `Scheme: ${state.nestedColorScheme}`
                 ];
