@@ -2301,7 +2301,7 @@
         <!-- Export Button - Bottom of Page -->
         <div style="text-align: center; padding: 40px 20px; margin-top: 40px; border-top: 2px solid rgba(255, 215, 0, 0.2);">
             <button class="btn btn-primary" onclick="showExportDialog()" style="padding: 15px 40px; font-size: 1.2em; box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4);">
-                <span>📸 Export Visualization as PNG</span>
+                <span>EXPORT VISUALIZATION AS PNG</span>
             </button>
             <p style="margin-top: 15px; color: rgba(255, 255, 255, 0.5); font-size: 0.9em;">
                 Export individual canvases or all four together in high resolution
@@ -7334,6 +7334,10 @@ Generated: ${new Date().toLocaleString()}
                         <div class="export-section">
                             <h4>Export Options</h4>
                             <label class="export-checkbox">
+                                <input type="checkbox" id="includeTitle" checked>
+                                <span>Include Canvas Title</span>
+                            </label>
+                            <label class="export-checkbox">
                                 <input type="checkbox" id="includeLegend" checked>
                                 <span>Include Detailed Legend</span>
                             </label>
@@ -7342,12 +7346,8 @@ Generated: ${new Date().toLocaleString()}
                                 <span>Include Watermark (Wessen Getachew)</span>
                             </label>
                             <label class="export-checkbox">
-                                <input type="checkbox" id="includeParameters" checked>
+                                <input type="checkbox" id="includeParameters">
                                 <span>Include Current Parameters Info</span>
-                            </label>
-                            <label class="export-checkbox">
-                                <input type="checkbox" id="includeConnections" checked>
-                                <span>Include Global Connections (r→r, r→r+m×2ⁿ)</span>
                             </label>
                         </div>
                         
@@ -7378,57 +7378,41 @@ Generated: ${new Date().toLocaleString()}
             try {
                 const canvasSelection = document.querySelector('input[name="canvas"]:checked').value;
                 const resolution = document.querySelector('input[name="resolution"]:checked').value;
+                const includeTitle = document.getElementById('includeTitle').checked;
                 const includeLegend = document.getElementById('includeLegend').checked;
                 const includeWatermark = document.getElementById('includeWatermark').checked;
                 const includeParameters = document.getElementById('includeParameters').checked;
-                const includeConnections = document.getElementById('includeConnections').checked;
 
                 console.log('Export started:', canvasSelection, resolution);
 
                 // Validate canvases exist
                 if (!canvases.disk || !canvases.cayley || !canvases.nested || !canvases.fullPlane) {
-                    console.error('Canvases not initialized!');
                     alert('Error: Canvases not initialized. Please refresh the page.');
                     return;
                 }
 
+                // Get dimensions
                 let width, height;
                 switch(resolution) {
-                    case '1080':
-                        width = 1920;
-                        height = 1080;
-                        break;
-                    case '1440':
-                        width = 2560;
-                        height = 1440;
-                        break;
-                    case '4k':
-                        width = 3840;
-                        height = 2160;
-                        break;
-                    case '8k':
-                        width = 7680;
-                        height = 4320;
-                        break;
+                    case '1080': width = 1920; height = 1080; break;
+                    case '1440': width = 2560; height = 1440; break;
+                    case '4k': width = 3840; height = 2160; break;
+                    case '8k': width = 7680; height = 4320; break;
                 }
 
                 const tempCanvas = document.createElement('canvas');
                 const tempCtx = tempCanvas.getContext('2d');
+                const baseSize = Math.min(width, height);
+                const legendSpace = includeLegend ? 250 : 0;
 
                 if (canvasSelection === 'all') {
-                    console.log('Exporting all four canvases...');
-                    // For all four canvases, use 2x2 grid with square aspect ratio
-                    // Extend width to accommodate legend on the right
-                    const baseSize = Math.min(width, height);
-                    const legendSpace = includeLegend ? 250 : 0; // Only add space if legend requested
+                    // Export all four canvases in 2x2 grid
                     tempCanvas.width = baseSize + legendSpace;
                     tempCanvas.height = baseSize;
                     
-                    // Background
                     tempCtx.fillStyle = '#0a0e27';
                     tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
 
-                    // Calculate dimensions for 2x2 grid (each quadrant is square)
                     const canvasSize = baseSize / 2;
                     const sourceCanvases = [
                         { canvas: canvases.disk, title: 'Unit Disk 𝔻', x: 0, y: 0 },
@@ -7438,41 +7422,34 @@ Generated: ${new Date().toLocaleString()}
                     ];
                     
                     sourceCanvases.forEach((item) => {
-                        console.log('Drawing canvas:', item.title, item.canvas);
-                        
-                        if (!item.canvas) {
-                            console.error('Canvas not found:', item.title);
-                            return;
-                        }
-                        
-                        // Draw canvas (each is square)
+                        if (!item.canvas) return;
                         tempCtx.drawImage(item.canvas, 
                             0, 0, item.canvas.width, item.canvas.height,
                             item.x, item.y, canvasSize, canvasSize);
                         
-                        // Don't add titles - each canvas already has its own title from live view
-                        // This prevents double titles
+                        // Add title if requested
+                        if (includeTitle) {
+                            const scale = baseSize / 1920;
+                            tempCtx.fillStyle = '#ffd700';
+                            tempCtx.font = `bold ${18 * scale}px "Fira Code"`;
+                            tempCtx.textAlign = 'center';
+                            tempCtx.textBaseline = 'top';
+                            tempCtx.fillText(item.title, item.x + canvasSize / 2, item.y + 20 * scale);
+                        }
                     });
 
                     if (includeLegend) {
-                        // Draw legend on the right side in the extended space
-                        // For "all" we'll show a combined legend
-                        drawLegendRight(tempCtx, tempCanvas.width, tempCanvas.height, baseSize, 'all');
+                        drawSimpleLegend(tempCtx, tempCanvas.width, tempCanvas.height, baseSize);
                     }
                 } else {
-                    console.log('Exporting single canvas:', canvasSelection);
-                    // For single canvas, extend width for legend on the right
-                    const baseSize = Math.min(width, height);
-                    const legendSpace = includeLegend ? 250 : 0; // Only add space if legend requested
+                    // Export single canvas
                     tempCanvas.width = baseSize + legendSpace;
                     tempCanvas.height = baseSize;
 
-                    // Background
                     tempCtx.fillStyle = '#0a0e27';
                     tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
 
-                    let sourceCanvas;
-                    let title;
+                    let sourceCanvas, title;
                     switch(canvasSelection) {
                         case 'disk':
                             sourceCanvas = canvases.disk;
@@ -7488,49 +7465,98 @@ Generated: ${new Date().toLocaleString()}
                             break;
                         case 'fullplane':
                             sourceCanvas = canvases.fullPlane;
-                            title = 'Full Complex Plane ℂ - Complete Cayley View';
+                            title = 'Full Complex Plane ℂ';
                             break;
                     }
 
-                    console.log('Source canvas:', sourceCanvas, 'Title:', title);
+                    if (!sourceCanvas) throw new Error(`Canvas not found: ${canvasSelection}`);
 
-                    if (!sourceCanvas) {
-                        throw new Error(`Canvas ${canvasSelection} not found!`);
-                    }
-
-                    // Draw canvas on the left (square)
                     tempCtx.drawImage(sourceCanvas, 0, 0, baseSize, baseSize);
 
-                    // Don't add title - the canvas already has it from the live view
-                    // This prevents double titles
+                    // Add title if requested
+                    if (includeTitle) {
+                        const scale = baseSize / 1000;
+                        tempCtx.fillStyle = '#ffd700';
+                        tempCtx.font = `bold ${28 * scale}px "Fira Code"`;
+                        tempCtx.textAlign = 'center';
+                        tempCtx.textBaseline = 'top';
+                        tempCtx.fillText(title, baseSize / 2, 30 * scale);
+                    }
 
                     if (includeLegend) {
-                        // Use right-side legend for individual canvas too
-                        drawLegendRight(tempCtx, tempCanvas.width, tempCanvas.height, baseSize, canvasSelection);
+                        drawSimpleLegend(tempCtx, tempCanvas.width, tempCanvas.height, baseSize);
                     }
                     
                     if (includeParameters) {
-                        drawParametersInfo(tempCtx, baseSize, baseSize, canvasSelection);
+                        drawSimpleParameters(tempCtx, baseSize);
                     }
                 }
 
-                // Add watermark if requested
                 if (includeWatermark) {
                     drawWatermark(tempCtx, tempCanvas.width, tempCanvas.height);
                 }
 
-                console.log('Creating download link...');
                 const link = document.createElement('a');
                 link.download = `farey-cayley-${canvasSelection}-${resolution}-${Date.now()}.png`;
                 link.href = tempCanvas.toDataURL('image/png', 1.0);
                 link.click();
 
-                console.log('Export complete!');
                 closeExportDialog();
             } catch (error) {
                 console.error('Export error:', error);
-                alert('Export failed: ' + error.message + '\nCheck console for details.');
+                alert('Export failed: ' + error.message);
             }
+        }
+
+        // Simple legend that always works
+        function drawSimpleLegend(ctx, totalWidth, totalHeight, baseSize) {
+            const legendX = baseSize + 10;
+            const legendY = 40;
+            const lineHeight = 25;
+            
+            ctx.fillStyle = '#ffd700';
+            ctx.font = 'bold 14px "Fira Code"';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            
+            let y = legendY;
+            ctx.fillText('Parameters:', legendX, y);
+            y += lineHeight * 1.5;
+            
+            ctx.font = '12px "Fira Code"';
+            ctx.fillStyle = 'rgba(255,255,255,0.9)';
+            ctx.fillText(`m = ${state.modulus}`, legendX, y); y += lineHeight;
+            ctx.fillText(`θ = ${state.phase.toFixed(0)}°`, legendX, y); y += lineHeight;
+            ctx.fillText(`Rings: ${state.minRing}-${state.maxRing}`, legendX, y); y += lineHeight;
+            ctx.fillText(`Points: ${state.fareyPoints.length}`, legendX, y); y += lineHeight;
+        }
+
+        // Simple parameters display
+        function drawSimpleParameters(ctx, baseSize) {
+            const padding = 20;
+            const boxX = padding;
+            const boxY = baseSize - 120;
+            const lineHeight = 18;
+            
+            ctx.fillStyle = 'rgba(10,14,39,0.9)';
+            ctx.fillRect(boxX, boxY, 250, 100);
+            ctx.strokeStyle = 'rgba(255,215,0,0.5)';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(boxX, boxY, 250, 100);
+            
+            ctx.fillStyle = '#ffd700';
+            ctx.font = 'bold 12px "Fira Code"';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            
+            let y = boxY + 10;
+            ctx.fillText('Current State:', boxX + 10, y); y += lineHeight * 1.2;
+            
+            ctx.font = '11px "Fira Code"';
+            ctx.fillStyle = 'rgba(255,255,255,0.9)';
+            ctx.fillText(`Modulus: ${state.modulus}`, boxX + 10, y); y += lineHeight;
+            ctx.fillText(`Phase: ${state.phase.toFixed(1)}°`, boxX + 10, y); y += lineHeight;
+            ctx.fillText(`Rings: ${state.minRing}–${state.maxRing}`, boxX + 10, y); y += lineHeight;
         }
 
         function drawParametersInfo(ctx, width, height, canvasType) {
@@ -8112,6 +8138,7 @@ Generated: ${new Date().toLocaleString()}
                     `V-Offset: ${state.cayleyVOffset.toFixed(1)}`
                 ];
             } else if (canvasType === 'all') {
+                console.log('Drawing legend for ALL canvases');
                 // For 2x2 grid view
                 items = [
                     { type: 'section', text: 'Elements' },
@@ -8126,27 +8153,33 @@ Generated: ${new Date().toLocaleString()}
                 ];
                 
                 // Add connection legend items if active
-                if (document.getElementById('toggleShowRtoR').checked) {
-                    if (items[items.length - 1].type !== 'section') {
-                        items.push({ type: 'section', text: 'Connections' });
+                try {
+                    if (document.getElementById('toggleShowRtoR') && document.getElementById('toggleShowRtoR').checked) {
+                        if (items[items.length - 1].type !== 'section') {
+                            items.push({ type: 'section', text: 'Connections' });
+                        }
+                        items.push({ color: '#00ffff', text: 'r→r' });
                     }
-                    items.push({ color: '#00ffff', text: 'r→r' });
-                }
-                if (document.getElementById('toggleShowRtoRplus2n').checked) {
-                    if (items[items.length - 1].type !== 'section' && !document.getElementById('toggleShowRtoR').checked) {
-                        items.push({ type: 'section', text: 'Connections' });
+                    if (document.getElementById('toggleShowRtoRplus2n') && document.getElementById('toggleShowRtoRplus2n').checked) {
+                        if (items[items.length - 1].type !== 'section' && (!document.getElementById('toggleShowRtoR') || !document.getElementById('toggleShowRtoR').checked)) {
+                            items.push({ type: 'section', text: 'Connections' });
+                        }
+                        items.push({ color: 'rgba(255,100,100,0.9)', text: 'r→r+m×2ⁿ' });
                     }
-                    items.push({ color: 'rgba(255,100,100,0.9)', text: 'r→r+m×2ⁿ' });
+                } catch (e) {
+                    console.warn('Could not add connection items:', e);
                 }
                 
                 // Calculate comprehensive analysis
                 const coprimeCount = state.fareyPoints.filter(fp => gcd(fp.num, fp.den) === 1).length;
                 let totalRingPoints = 0;
                 let totalCoprimeRingPoints = 0;
+                console.log('Calculating ring points from', state.minRing, 'to', state.maxRing);
                 for (let m = state.minRing; m <= state.maxRing; m++) {
                     totalRingPoints += m;
                     totalCoprimeRingPoints += eulerPhi(m);
                 }
+                console.log('Total ring points:', totalRingPoints, 'Coprime:', totalCoprimeRingPoints);
                 
                 parameters = [
                     `m=${state.modulus} (φ=${eulerPhi(state.modulus)})`,
@@ -8157,6 +8190,16 @@ Generated: ${new Date().toLocaleString()}
                     `θ=${state.phase.toFixed(0)}°`,
                     `Mode: ${state.connectionMode}`,
                     `Scheme: ${state.nestedColorScheme}`
+                ];
+            } else {
+                // Default case - shouldn't happen but prevents errors
+                console.warn('Unknown canvas type:', canvasType);
+                items = [
+                    { type: 'section', text: 'Visualization' }
+                ];
+                parameters = [
+                    `m=${state.modulus}`,
+                    `θ=${state.phase.toFixed(0)}°`
                 ];
             }
 
