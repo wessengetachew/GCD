@@ -2259,6 +2259,12 @@
                         <span class="toggle-label">Full Complex Plane View</span>
                     </label>
 
+                    <input type="checkbox" id="toggleReduction" checked>
+                    <label for="toggleReduction" class="toggle-item">
+                        <div class="toggle-switch"></div>
+                        <span class="toggle-label">Modular Reduction View</span>
+                    </label>
+
                     <input type="checkbox" id="toggleAnimate">
                     <label for="toggleAnimate" class="toggle-item">
                         <div class="toggle-switch"></div>
@@ -2503,11 +2509,12 @@
             canvases.disk = document.getElementById('diskCanvas');
             canvases.cayley = document.getElementById('cayleyCanvas');
             canvases.nested = document.getElementById('nestedCanvas');
+            canvases.reduction = document.getElementById('reductionCanvas');
             canvases.fullPlane = document.getElementById('fullPlaneCanvas');
             
             const dpr = window.devicePixelRatio || 1;
             
-            [canvases.disk, canvases.cayley, canvases.nested, canvases.fullPlane].forEach(canvas => {
+            [canvases.disk, canvases.cayley, canvases.nested, canvases.reduction, canvases.fullPlane].forEach(canvas => {
                 const rect = canvas.getBoundingClientRect();
                 canvas.width = canvas.width * dpr;
                 canvas.height = canvas.height * dpr;
@@ -2518,6 +2525,7 @@
             canvases.diskCtx = canvases.disk.getContext('2d');
             canvases.cayleyCtx = canvases.cayley.getContext('2d');
             canvases.nestedCtx = canvases.nested.getContext('2d');
+            canvases.reductionCtx = canvases.reduction.getContext('2d');
             canvases.fullPlaneCtx = canvases.fullPlane.getContext('2d');
         }
 
@@ -3103,10 +3111,30 @@
                 updateAll();
             });
             
+            document.getElementById('toggleReduction').addEventListener('change', e => {
+                const panel = document.getElementById('reductionPanel');
+                if (e.target.checked) {
+                    panel.style.display = 'block';
+                } else {
+                    panel.style.display = 'none';
+                }
+                updateAll();
+            });
+            
+            // Reduction canvas toggles
+            ['toggleReductionProjections', 'toggleReductionChannels', 'toggleReductionInvert'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('change', updateAll);
+                }
+            });
+            
             // Initialize full plane view on load since toggle is checked by default
             const fullPlanePanel = document.getElementById('fullPlanePanel');
+            const reductionPanel = document.getElementById('reductionPanel');
             const vizGrid = document.getElementById('vizGrid');
             fullPlanePanel.style.display = 'block';
+            reductionPanel.style.display = 'block';
             vizGrid.classList.add('four-panel');
             
             // Update max Farey order display when modulus changes
@@ -6010,6 +6038,161 @@ Generated: ${new Date().toLocaleString()}
             }
         }
 
+        // ============================================================
+        // MODULAR REDUCTION PROJECTION VISUALIZATION
+        // ============================================================
+        
+        function drawReduction() {
+            const canvas = canvases.reduction;
+            const ctx = canvases.reductionCtx;
+            const w = canvas.width / (window.devicePixelRatio || 1);
+            const h = canvas.height / (window.devicePixelRatio || 1);
+
+            ctx.clearRect(0, 0, w, h);
+
+            const showProjections = document.getElementById('toggleReductionProjections')?.checked ?? true;
+            const showChannels = document.getElementById('toggleReductionChannels')?.checked ?? true;
+            const invertMode = document.getElementById('toggleReductionInvert')?.checked ?? false;
+
+            const M = state.modulus;
+            const centerX = w / 2;
+            const centerY = h / 2;
+            const maxRadius = Math.min(w, h) * 0.42;
+
+            // Get all divisors of M (these are the Farey channels)
+            const divisors = [];
+            for (let d = 1; d <= M; d++) {
+                if (M % d === 0) divisors.push(d);
+            }
+            
+            const sortedDivisors = invertMode ? [...divisors].sort((a, b) => b - a) : [...divisors].sort((a, b) => a - b);
+            const ringIndexMap = {};
+            sortedDivisors.forEach((d, idx) => {
+                ringIndexMap[d] = idx;
+            });
+
+            // Draw channel rings
+            if (showChannels) {
+                sortedDivisors.forEach((divisor, ringIndex) => {
+                    const radius = invertMode ? 
+                        maxRadius * (M / divisor) : 
+                        maxRadius * (divisor / M);
+                    
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+                    ctx.strokeStyle = '#ffd700';
+                    ctx.lineWidth = divisor === M ? 2.5 : 1.5;
+                    ctx.globalAlpha = divisor === M ? 0.8 : 0.4;
+                    ctx.stroke();
+                    ctx.globalAlpha = 1;
+                    
+                    // Label the ring
+                    if (divisor === M || divisor === 1 || ringIndex % 3 === 0) {
+                        ctx.save();
+                        ctx.translate(centerX + radius + 15, centerY);
+                        ctx.fillStyle = '#ffd700';
+                        ctx.font = '11px Fira Code';
+                        ctx.textAlign = 'left';
+                        ctx.fillText(`M'=${divisor}`, 0, 0);
+                        ctx.restore();
+                    }
+                });
+            }
+
+            // Calculate all points on all rings with per-ring rotation
+            const perRingRot = (state.ringRotation || 0) * Math.PI / 180;
+            const allRingPoints = [];
+            
+            sortedDivisors.forEach((divisor, ringIndex) => {
+                const radius = invertMode ? 
+                    maxRadius * (M / divisor) : 
+                    maxRadius * (divisor / M);
+                const ringRotationAngle = perRingRot * ringIndex;
+                
+                for (let k = 0; k < divisor; k++) {
+                    const baseAngle = (2 * Math.PI * k / divisor);
+                    const angle = baseAngle + ringRotationAngle;
+                    const x = centerX + radius * Math.cos(angle);
+                    const y = centerY + radius * Math.sin(angle);
+                    
+                    const g = gcd(k, divisor);
+                    const coprime = g === 1;
+                    const channel = divisor / g;
+                    
+                    allRingPoints.push({
+                        ring: divisor,
+                        ringIndex,
+                        r: k,
+                        x, y,
+                        angle,
+                        baseAngle,
+                        radius,
+                        gcd: g,
+                        coprime,
+                        channel
+                    });
+                }
+            });
+
+            // Draw Farey projection lines (from reducible residues to their reduced forms)
+            if (showProjections) {
+                allRingPoints.forEach(point => {
+                    if (point.ring === M && point.gcd > 1) {
+                        // This is a reducible residue on the outer ring
+                        const targetRing = point.channel;
+                        const targetRingIndex = ringIndexMap[targetRing];
+                        
+                        if (targetRingIndex !== undefined) {
+                            const targetRadius = invertMode ? 
+                                maxRadius * (M / targetRing) : 
+                                maxRadius * (targetRing / M);
+                            const targetRotation = perRingRot * targetRingIndex;
+                            
+                            // The reduced residue r' = r/gcd on the target ring
+                            const reducedR = point.r / point.gcd;
+                            const targetAngle = (2 * Math.PI * reducedR / targetRing) + targetRotation;
+                            const targetX = centerX + targetRadius * Math.cos(targetAngle);
+                            const targetY = centerY + targetRadius * Math.sin(targetAngle);
+                            
+                            // Draw projection line
+                            ctx.beginPath();
+                            ctx.moveTo(point.x, point.y);
+                            ctx.lineTo(targetX, targetY);
+                            ctx.strokeStyle = '#ff0000';
+                            ctx.lineWidth = 0.8;
+                            ctx.globalAlpha = 0.4;
+                            ctx.stroke();
+                            ctx.globalAlpha = 1;
+                        }
+                    }
+                });
+            }
+
+            // Draw all points
+            allRingPoints.forEach(point => {
+                const isOuterRing = point.ring === M;
+                const color = point.coprime ? '#00ffff' : '#ff1493';
+                const size = isOuterRing ? (point.coprime ? 5 : 4) : (point.coprime ? 3.5 : 2.5);
+                
+                ctx.beginPath();
+                ctx.arc(point.x, point.y, size, 0, 2 * Math.PI);
+                ctx.fillStyle = color;
+                ctx.globalAlpha = isOuterRing ? 0.95 : 0.7;
+                ctx.fill();
+                ctx.globalAlpha = 1;
+            });
+
+            // Draw watermark
+            ctx.save();
+            ctx.translate(w - 10, h - 10);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillStyle = 'rgba(200, 200, 200, 0.15)';
+            ctx.font = '10px Fira Code';
+            ctx.textAlign = 'right';
+            ctx.fillText('Wessen Getachew (@7dview) • Modular Reduction Explorer', 0, 0);
+            ctx.restore();
+        }
+
         function drawFullPlane() {
             const canvas = canvases.fullPlane;
             const ctx = canvases.fullPlaneCtx;
@@ -6995,6 +7178,7 @@ Generated: ${new Date().toLocaleString()}
             drawDisk();
             drawCayley();
             drawNested();
+            drawReduction();
             
             // Draw full plane if visible
             if (document.getElementById('toggleFullPlane').checked) {
