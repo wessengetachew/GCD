@@ -1786,8 +1786,8 @@
                             <span>Per-Ring Rotation</span>
                             <span class="control-value" id="ringRotationValue">0°</span>
                         </div>
-                        <input type="range" id="ringRotationSlider" min="0" max="360" value="0" step="1">
-                        <input type="number" id="ringRotationInput" value="0" min="0" max="360" step="1" style="margin-top: 8px;" placeholder="Degrees per ring">
+                        <input type="range" id="ringRotationSlider" min="0" max="360" value="0" step="0.01">
+                        <input type="number" id="ringRotationInput" value="0" min="0" max="3600" step="0.0000000000000001" style="margin-top: 8px;" placeholder="Degrees per ring">
                     </div>
                 </div>
 
@@ -2807,7 +2807,7 @@
             // Ring rotation slider
             document.getElementById('ringRotationSlider').addEventListener('input', e => {
                 syncRingRotation(e.target.value);
-                document.getElementById('ringRotationValue').textContent = state.ringRotation.toFixed(0) + '°';
+                document.getElementById('ringRotationValue').textContent = formatRotationValue(state.ringRotation) + '°';
                 document.getElementById('ringRotationInput').value = state.ringRotation.toFixed(0);
                 if (!state.animationId) updateAll();
             });
@@ -3724,7 +3724,7 @@
             
             document.getElementById('ringRotationSlider').value = state.ringRotation;
             document.getElementById('ringRotationInput').value = state.ringRotation;
-            document.getElementById('ringRotationValue').textContent = state.ringRotation.toFixed(0) + '°';
+            document.getElementById('ringRotationValue').textContent = formatRotationValue(state.ringRotation) + '°';
             
             document.getElementById('connectionMode').value = state.connectionMode;
             document.getElementById('gcdFilter').value = state.gcdFilter;
@@ -6774,6 +6774,29 @@ Generated: ${new Date().toLocaleString()}
             }
         }
 
+        // Format rotation value with smart precision (up to 17 decimal places)
+        function formatRotationValue(value) {
+            // If it's a whole number, show no decimals
+            if (value === Math.floor(value)) {
+                return value.toFixed(0);
+            }
+            
+            // For very small rotations (like 1/101 = 3.564356...)
+            // Show up to 17 decimal places but remove trailing zeros
+            let str = value.toFixed(17);
+            
+            // Remove trailing zeros
+            str = str.replace(/\.?0+$/, '');
+            
+            // If still very long, limit to 10 significant decimals for display
+            const parts = str.split('.');
+            if (parts[1] && parts[1].length > 10) {
+                return value.toFixed(10).replace(/\.?0+$/, '');
+            }
+            
+            return str;
+        }
+
         function updateAll() {
             drawDisk();
             drawCayley();
@@ -6850,12 +6873,12 @@ Generated: ${new Date().toLocaleString()}
             state.perRingRotations = null;
             
             // Update UI
-            document.getElementById('ringRotationValue').textContent = rotationIncrement.toFixed(0) + '°';
-            document.getElementById('ringRotationValue2').textContent = rotationIncrement.toFixed(0) + '°';
+            document.getElementById('ringRotationValue').textContent = formatRotationValue(rotationIncrement) + '°';
+            document.getElementById('ringRotationValue2').textContent = formatRotationValue(rotationIncrement) + '°';
             document.getElementById('ringRotationSlider').value = rotationIncrement;
             document.getElementById('ringRotationSlider2').value = rotationIncrement;
-            document.getElementById('ringRotationInput').value = rotationIncrement.toFixed(0);
-            document.getElementById('ringRotationInput2').value = rotationIncrement.toFixed(0);
+            document.getElementById('ringRotationInput').value = rotationIncrement;
+            document.getElementById('ringRotationInput2').value = rotationIncrement;
             
             // If "apply to all canvases" is checked, also set global phase rotation
             if (applyToAll) {
@@ -6998,12 +7021,12 @@ Generated: ${new Date().toLocaleString()}
         function syncRingRotation(value) {
             const val = parseFloat(value);
             state.ringRotation = val;
-            document.getElementById('ringRotationValue').textContent = val.toFixed(0) + '°';
-            document.getElementById('ringRotationValue2').textContent = val.toFixed(0) + '°';
+            document.getElementById('ringRotationValue').textContent = formatRotationValue(val) + '°';
+            document.getElementById('ringRotationValue2').textContent = formatRotationValue(val) + '°';
             document.getElementById('ringRotationSlider').value = val;
             document.getElementById('ringRotationSlider2').value = val;
-            document.getElementById('ringRotationInput').value = val.toFixed(0);
-            document.getElementById('ringRotationInput2').value = val.toFixed(0);
+            document.getElementById('ringRotationInput').value = val;
+            document.getElementById('ringRotationInput2').value = val;
             if (!state.animationId) updateAll();
         }
 
@@ -7341,6 +7364,15 @@ Generated: ${new Date().toLocaleString()}
                                 <span>Include Detailed Legend</span>
                             </label>
                             
+                            <!-- Export Style Selection -->
+                            <div style="margin: 12px 0;">
+                                <label class="control-label" style="color: var(--text); font-size: 0.9em; margin-bottom: 8px;">Export Style</label>
+                                <select id="exportStyle" style="width: 100%; padding: 8px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
+                                    <option value="standard">Standard (Legend Right)</option>
+                                    <option value="professional">Professional Layout</option>
+                                </select>
+                            </div>
+                            
                             <!-- Legend Size Control -->
                             <div style="margin-left: 24px; margin-top: 8px; margin-bottom: 12px;">
                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
@@ -7404,6 +7436,7 @@ Generated: ${new Date().toLocaleString()}
                 const includeConnections = document.getElementById('includeConnections').checked;
                 const includeStatistics = document.getElementById('includeStatistics').checked;
                 const legendSize = parseInt(document.getElementById('legendSizeSlider').value) / 100;
+                const exportStyle = document.getElementById('exportStyle').value;
 
                 // Validate canvases exist
                 if (!canvases.disk || !canvases.cayley || !canvases.nested || !canvases.fullPlane) {
@@ -7423,95 +7456,100 @@ Generated: ${new Date().toLocaleString()}
                 const tempCanvas = document.createElement('canvas');
                 const tempCtx = tempCanvas.getContext('2d');
                 const baseSize = Math.min(width, height);
-                const legendSpace = includeLegend ? 350 : 0; // Wider for more details
 
-                if (canvasSelection === 'all') {
-                    // Export all four canvases in 2x2 grid
-                    tempCanvas.width = baseSize + legendSpace;
-                    tempCanvas.height = baseSize;
-                    
-                    tempCtx.fillStyle = '#0a0e27';
-                    tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+                if (exportStyle === 'professional') {
+                    // Professional layout: visualization on left, detailed panel on right
+                    exportProfessionalLayout(tempCanvas, tempCtx, canvasSelection, baseSize, 
+                        includeTitle, includeLegend, includeWatermark, includeParameters, 
+                        includeConnections, includeStatistics, legendSize);
+                } else {
+                    // Standard layout: visualization with legend on right
+                    const legendSpace = includeLegend ? 350 : 0;
 
-                    const canvasSize = baseSize / 2;
-                    const sourceCanvases = [
-                        { canvas: canvases.disk, title: 'Unit Disk 𝔻', x: 0, y: 0 },
-                        { canvas: canvases.cayley, title: 'Upper Half-Plane ℍ', x: canvasSize, y: 0 },
-                        { canvas: canvases.nested, title: 'Nested Rings ⊚', x: 0, y: canvasSize },
-                        { canvas: canvases.fullPlane, title: 'Full Complex Plane ℂ', x: canvasSize, y: canvasSize }
-                    ];
-                    
-                    sourceCanvases.forEach((item) => {
-                        if (!item.canvas) return;
-                        tempCtx.drawImage(item.canvas, 
-                            0, 0, item.canvas.width, item.canvas.height,
-                            item.x, item.y, canvasSize, canvasSize);
+                    if (canvasSelection === 'all') {
+                        tempCanvas.width = baseSize + legendSpace;
+                        tempCanvas.height = baseSize;
                         
-                        // Add title if requested
+                        tempCtx.fillStyle = '#0a0e27';
+                        tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+                        const canvasSize = baseSize / 2;
+                        const sourceCanvases = [
+                            { canvas: canvases.disk, title: 'Unit Disk 𝔻', x: 0, y: 0 },
+                            { canvas: canvases.cayley, title: 'Upper Half-Plane ℍ', x: canvasSize, y: 0 },
+                            { canvas: canvases.nested, title: 'Nested Rings ⊚', x: 0, y: canvasSize },
+                            { canvas: canvases.fullPlane, title: 'Full Complex Plane ℂ', x: canvasSize, y: canvasSize }
+                        ];
+                        
+                        sourceCanvases.forEach((item) => {
+                            if (!item.canvas) return;
+                            tempCtx.drawImage(item.canvas, 
+                                0, 0, item.canvas.width, item.canvas.height,
+                                item.x, item.y, canvasSize, canvasSize);
+                            
+                            if (includeTitle) {
+                                const scale = baseSize / 1920;
+                                tempCtx.fillStyle = '#ffd700';
+                                tempCtx.font = `bold ${18 * scale}px "Fira Code"`;
+                                tempCtx.textAlign = 'center';
+                                tempCtx.textBaseline = 'top';
+                                tempCtx.fillText(item.title, item.x + canvasSize / 2, item.y + 20 * scale);
+                            }
+                        });
+
+                        if (includeLegend) {
+                            drawEnhancedLegend(tempCtx, tempCanvas.width, tempCanvas.height, baseSize, 'all', 
+                                includeParameters, includeConnections, includeStatistics, legendSize);
+                        }
+                    } else {
+                        tempCanvas.width = baseSize + legendSpace;
+                        tempCanvas.height = baseSize;
+
+                        tempCtx.fillStyle = '#0a0e27';
+                        tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+                        let sourceCanvas, title;
+                        switch(canvasSelection) {
+                            case 'disk':
+                                sourceCanvas = canvases.disk;
+                                title = 'Unit Disk 𝔻 - Farey Triangle';
+                                break;
+                            case 'cayley':
+                                sourceCanvas = canvases.cayley;
+                                title = 'Upper Half-Plane ℍ - Cayley Transform';
+                                break;
+                            case 'nested':
+                                sourceCanvas = canvases.nested;
+                                title = 'Nested Modular Rings';
+                                break;
+                            case 'fullplane':
+                                sourceCanvas = canvases.fullPlane;
+                                title = 'Full Complex Plane ℂ';
+                                break;
+                        }
+
+                        if (!sourceCanvas) throw new Error(`Canvas not found: ${canvasSelection}`);
+
+                        tempCtx.drawImage(sourceCanvas, 0, 0, baseSize, baseSize);
+
                         if (includeTitle) {
-                            const scale = baseSize / 1920;
+                            const scale = baseSize / 1000;
                             tempCtx.fillStyle = '#ffd700';
-                            tempCtx.font = `bold ${18 * scale}px "Fira Code"`;
+                            tempCtx.font = `bold ${28 * scale}px "Fira Code"`;
                             tempCtx.textAlign = 'center';
                             tempCtx.textBaseline = 'top';
-                            tempCtx.fillText(item.title, item.x + canvasSize / 2, item.y + 20 * scale);
+                            tempCtx.fillText(title, baseSize / 2, 30 * scale);
                         }
-                    });
 
-                    if (includeLegend) {
-                        drawEnhancedLegend(tempCtx, tempCanvas.width, tempCanvas.height, baseSize, 'all', 
-                            includeParameters, includeConnections, includeStatistics, legendSize);
-                    }
-                } else {
-                    // Export single canvas
-                    tempCanvas.width = baseSize + legendSpace;
-                    tempCanvas.height = baseSize;
-
-                    tempCtx.fillStyle = '#0a0e27';
-                    tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-
-                    let sourceCanvas, title;
-                    switch(canvasSelection) {
-                        case 'disk':
-                            sourceCanvas = canvases.disk;
-                            title = 'Unit Disk 𝔻 - Farey Triangle';
-                            break;
-                        case 'cayley':
-                            sourceCanvas = canvases.cayley;
-                            title = 'Upper Half-Plane ℍ - Cayley Transform';
-                            break;
-                        case 'nested':
-                            sourceCanvas = canvases.nested;
-                            title = 'Nested Modular Rings';
-                            break;
-                        case 'fullplane':
-                            sourceCanvas = canvases.fullPlane;
-                            title = 'Full Complex Plane ℂ';
-                            break;
+                        if (includeLegend) {
+                            drawEnhancedLegend(tempCtx, tempCanvas.width, tempCanvas.height, baseSize, canvasSelection, 
+                                includeParameters, includeConnections, includeStatistics, legendSize);
+                        }
                     }
 
-                    if (!sourceCanvas) throw new Error(`Canvas not found: ${canvasSelection}`);
-
-                    tempCtx.drawImage(sourceCanvas, 0, 0, baseSize, baseSize);
-
-                    // Add title if requested
-                    if (includeTitle) {
-                        const scale = baseSize / 1000;
-                        tempCtx.fillStyle = '#ffd700';
-                        tempCtx.font = `bold ${28 * scale}px "Fira Code"`;
-                        tempCtx.textAlign = 'center';
-                        tempCtx.textBaseline = 'top';
-                        tempCtx.fillText(title, baseSize / 2, 30 * scale);
+                    if (includeWatermark) {
+                        drawWatermark(tempCtx, tempCanvas.width, tempCanvas.height);
                     }
-
-                    if (includeLegend) {
-                        drawEnhancedLegend(tempCtx, tempCanvas.width, tempCanvas.height, baseSize, canvasSelection, 
-                            includeParameters, includeConnections, includeStatistics, legendSize);
-                    }
-                }
-
-                if (includeWatermark) {
-                    drawWatermark(tempCtx, tempCanvas.width, tempCanvas.height);
                 }
 
                 const link = document.createElement('a');
@@ -7523,6 +7561,151 @@ Generated: ${new Date().toLocaleString()}
             } catch (error) {
                 console.error('Export error:', error);
                 alert('Export failed: ' + error.message);
+            }
+        }
+
+        // Professional export layout (inspired by Modular Reduction Explorer)
+        function exportProfessionalLayout(canvas, ctx, canvasSelection, baseSize, includeTitle, includeLegend, 
+            includeWatermark, includeParameters, includeConnections, includeStatistics, legendSize) {
+            
+            canvas.width = baseSize;
+            canvas.height = baseSize;
+            
+            const leftPanel = baseSize * 0.65;
+            const rightPanel = baseSize * 0.35;
+            const padding = baseSize * 0.03;
+            
+            // Background
+            ctx.fillStyle = '#0a0e27';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // TITLE at top
+            if (includeTitle) {
+                ctx.font = `bold ${baseSize * 0.025}px "Fira Code"`;
+                ctx.fillStyle = '#ffffff';
+                ctx.textAlign = 'center';
+                ctx.fillText('Farey Triangle & Cayley Transform Explorer', canvas.width / 2, padding * 1.5);
+                
+                ctx.font = `${baseSize * 0.012}px "Fira Code"`;
+                ctx.fillStyle = '#8b949e';
+                const now = new Date();
+                ctx.fillText(now.toLocaleString(), canvas.width / 2, padding * 2.3);
+            }
+            
+            const titleHeight = includeTitle ? padding * 3 : padding;
+            
+            // VISUALIZATION (left side, centered)
+            const vizSize = leftPanel - padding * 2;
+            const vizX = padding;
+            const vizY = titleHeight + (canvas.height - titleHeight - vizSize) / 2;
+            
+            let sourceCanvas;
+            switch(canvasSelection) {
+                case 'disk': sourceCanvas = canvases.disk; break;
+                case 'cayley': sourceCanvas = canvases.cayley; break;
+                case 'nested': sourceCanvas = canvases.nested; break;
+                case 'fullplane': sourceCanvas = canvases.fullPlane; break;
+                case 'all':
+                    const canvasSize = vizSize / 2;
+                    [[canvases.disk, 0, 0], [canvases.cayley, canvasSize, 0],
+                     [canvases.nested, 0, canvasSize], [canvases.fullPlane, canvasSize, canvasSize]].forEach(([c, dx, dy]) => {
+                        if (c) ctx.drawImage(c, 0, 0, c.width, c.height, vizX + dx, vizY + dy, canvasSize, canvasSize);
+                    });
+                    break;
+            }
+            
+            if (sourceCanvas) {
+                ctx.drawImage(sourceCanvas, 0, 0, sourceCanvas.width, sourceCanvas.height, vizX, vizY, vizSize, vizSize);
+            }
+            
+            // RIGHT PANEL - Professional legend
+            if (includeLegend) {
+                const rightX = leftPanel + padding;
+                let currentY = titleHeight + padding;
+                
+                ctx.font = `bold ${baseSize * 0.018}px "Fira Code"`;
+                ctx.fillStyle = '#79c0ff';
+                ctx.textAlign = 'left';
+                ctx.fillText('CONFIGURATION', rightX, currentY);
+                currentY += padding * 0.8;
+                
+                ctx.strokeStyle = '#30363d';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(rightX, currentY);
+                ctx.lineTo(rightX + rightPanel - padding * 2, currentY);
+                ctx.stroke();
+                currentY += padding * 0.8;
+                
+                ctx.font = `${baseSize * 0.013}px "Fira Code"`;
+                ctx.fillStyle = '#c9d1d9';
+                
+                ctx.fillText(`Modulus: m = ${state.modulus}`, rightX, currentY); currentY += padding * 0.6;
+                ctx.fillText(`Rings: [${state.minRing}, ${state.maxRing}]`, rightX, currentY); currentY += padding * 0.6;
+                ctx.fillText(`φ(m) = ${eulerPhi(state.modulus)}`, rightX, currentY); currentY += padding * 1.2;
+                
+                // Statistics
+                ctx.font = `bold ${baseSize * 0.018}px "Fira Code"`;
+                ctx.fillStyle = '#79c0ff';
+                ctx.fillText('STATISTICS', rightX, currentY); currentY += padding * 0.8;
+                
+                ctx.strokeStyle = '#30363d';
+                ctx.beginPath();
+                ctx.moveTo(rightX, currentY);
+                ctx.lineTo(rightX + rightPanel - padding * 2, currentY);
+                ctx.stroke();
+                currentY += padding * 0.8;
+                
+                ctx.font = `${baseSize * 0.013}px "Fira Code"`;
+                ctx.fillStyle = '#c9d1d9';
+                
+                const coprimeCount = state.fareyPoints.filter(fp => gcd(fp.num, fp.den) === 1).length;
+                ctx.fillText(`Points: ${state.fareyPoints.length}`, rightX, currentY); currentY += padding * 0.6;
+                ctx.fillText(`Coprime: ${coprimeCount}`, rightX, currentY); currentY += padding * 0.6;
+                ctx.fillText(`Primes: ${Math.min(state.numPrimes, state.primes.length)}`, rightX, currentY); currentY += padding * 1.2;
+                
+                // Color key
+                ctx.font = `bold ${baseSize * 0.018}px "Fira Code"`;
+                ctx.fillStyle = '#79c0ff';
+                ctx.fillText('COLOR KEY', rightX, currentY); currentY += padding * 0.8;
+                
+                ctx.strokeStyle = '#30363d';
+                ctx.beginPath();
+                ctx.moveTo(rightX, currentY);
+                ctx.lineTo(rightX + rightPanel - padding * 2, currentY);
+                ctx.stroke();
+                currentY += padding * 0.8;
+                
+                const swatchSize = baseSize * 0.015;
+                const swatchGap = baseSize * 0.025;
+                
+                ctx.font = `${baseSize * 0.012}px "Fira Code"`;
+                
+                ctx.fillStyle = CONFIG.colors.farey;
+                ctx.fillRect(rightX, currentY - swatchSize * 0.7, swatchSize, swatchSize);
+                ctx.fillStyle = '#c9d1d9';
+                ctx.fillText('GCD=1 (Coprime)', rightX + swatchGap, currentY); currentY += padding * 0.8;
+                
+                ctx.fillStyle = '#e74c3c';
+                ctx.fillRect(rightX, currentY - swatchSize * 0.7, swatchSize, swatchSize);
+                ctx.fillStyle = '#c9d1d9';
+                ctx.fillText('GCD=m (Divisible)', rightX + swatchGap, currentY); currentY += padding * 1.2;
+                
+                // Metadata at bottom
+                currentY = canvas.height - padding * 4;
+                ctx.font = `bold ${baseSize * 0.016}px "Fira Code"`;
+                ctx.fillStyle = '#79c0ff';
+                ctx.fillText('METADATA', rightX, currentY); currentY += padding * 0.8;
+                
+                ctx.font = `${baseSize * 0.01}px "Fira Code"`;
+                ctx.fillStyle = '#8b949e';
+                ctx.fillText(`Generated: ${new Date().toLocaleString()}`, rightX, currentY); currentY += padding * 0.5;
+                ctx.fillText('Author: Wessen Getachew', rightX, currentY); currentY += padding * 0.5;
+                ctx.fillText('Farey Triangle & Cayley Transform Explorer', rightX, currentY);
+            }
+            
+            if (includeWatermark) {
+                drawWatermark(ctx, canvas.width, canvas.height);
             }
         }
 
