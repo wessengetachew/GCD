@@ -1331,8 +1331,9 @@
                             <option value="disk">Unit Disk</option>
                             <option value="cayley">Cayley Plane</option>
                             <option value="nested">Nested Rings</option>
+                            <option value="reduction">Modular Reduction</option>
                             <option value="fullplane">Full Plane</option>
-                            <option value="all">All 4 Canvases (2×2)</option>
+                            <option value="all">All 5 Canvases</option>
                         </select>
                     </div>
 
@@ -1519,7 +1520,7 @@
                             <span class="control-value" id="phaseValue">0°</span>
                         </div>
                         <input type="range" id="phaseSlider" min="0" max="360" value="0" step="0.1">
-                        <input type="number" id="phaseInput" value="0" min="0" max="360" step="0.1" style="margin-top: 8px;" placeholder="Enter angle in degrees">
+                        <input type="number" id="phaseInput" value="0" min="0" max="360" step="0.00000000000000001" style="margin-top: 8px;" placeholder="Enter angle in degrees (17 decimal precision)">
                         
                         <!-- Phase Animation Controls -->
                         <div style="display: flex; gap: 8px; margin-top: 12px; align-items: center;">
@@ -1621,6 +1622,18 @@
                         </div>
                         <input type="range" id="ringRotationSlider2" min="0" max="360" value="0" step="0.01" oninput="syncRingRotation(this.value)">
                         <input type="number" id="ringRotationInput2" value="0" min="0" max="3600" step="0.0000000000000001" style="margin-top: 8px;" placeholder="Degrees per ring" onchange="syncRingRotation(this.value)">
+                    </div>
+                </div>
+
+                <!-- Global Line Thickness -->
+                <div class="section-header">Global Line Thickness</div>
+                <div class="control-row">
+                    <div class="control-item" data-tooltip="Control line thickness globally for all visualizations. Lower values create sharper, cleaner lines for large moduli.">
+                        <div class="control-label">
+                            <span>Line Thickness (All Canvases)</span>
+                            <span class="control-value" id="globalLineThicknessValue">1.00</span>
+                        </div>
+                        <input type="range" id="globalLineThickness" min="0.1" max="5.0" value="1.0" step="0.05" oninput="updateGlobalLineThickness(this.value)">
                     </div>
                 </div>
 
@@ -2387,6 +2400,7 @@
             maxRing: 101,
             ringSpacing: 1.0,
             ringRotation: 0,
+            globalLineThickness: 1.0,
             connectionMode: 'none',
             gcdFilter: 'both',
             gapSize: 2,
@@ -4439,7 +4453,7 @@
                 let dataURL;
                 
                 if (canvasSelection === 'all') {
-                    // Create composite frame with all 4 canvases
+                    // Create composite frame with all 5 canvases
                     dataURL = captureCompositeFrame(includeLegend);
                 } else {
                     // Single canvas capture
@@ -4457,6 +4471,10 @@
                         case 'nested':
                             sourceCanvas = canvases.nested;
                             canvasType = 'nested';
+                            break;
+                        case 'reduction':
+                            sourceCanvas = canvases.reduction;
+                            canvasType = 'reduction';
                             break;
                         case 'fullplane':
                             sourceCanvas = canvases.fullPlane;
@@ -4521,34 +4539,42 @@
         }
 
         function captureCompositeFrame(includeLegend) {
-            // Create 2x2 grid of all canvases
+            // Create 2×3 grid layout for all 5 canvases
             const maxDim = Math.max(
                 canvases.disk.width, canvases.disk.height,
                 canvases.cayley.width, canvases.cayley.height,
                 canvases.nested.width, canvases.nested.height,
+                canvases.reduction.width, canvases.reduction.height,
                 canvases.fullPlane.width, canvases.fullPlane.height
             );
             
-            const baseSize = maxDim * 2; // 2x2 grid
-            const legendSpace = includeLegend ? 250 : 0;
+            // 2 rows × 3 columns layout
+            const cols = 3;
+            const rows = 2;
+            const baseWidth = maxDim * cols;
+            const baseHeight = maxDim * rows;
+            const legendSpace = includeLegend ? 300 : 0;
             
             const tempCanvas = document.createElement('canvas');
             const tempCtx = tempCanvas.getContext('2d');
             
-            tempCanvas.width = baseSize + legendSpace;
-            tempCanvas.height = baseSize;
+            tempCanvas.width = baseWidth + legendSpace;
+            tempCanvas.height = baseHeight;
             
             // Background
             tempCtx.fillStyle = '#0a0e27';
             tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
             
-            const canvasSize = baseSize / 2;
+            const canvasSize = maxDim;
             
-            // Draw 4 canvases in 2x2 grid
+            // Draw 5 canvases in 2×3 grid layout:
+            // Row 1: Disk | Cayley | Nested
+            // Row 2: Reduction | Full Plane | (empty)
             const sources = [
                 { canvas: canvases.disk, title: 'Unit Disk 𝔻', x: 0, y: 0 },
                 { canvas: canvases.cayley, title: 'Upper Half-Plane ℍ', x: canvasSize, y: 0 },
-                { canvas: canvases.nested, title: 'Nested Rings ⊚', x: 0, y: canvasSize },
+                { canvas: canvases.nested, title: 'Nested Rings ⊚', x: canvasSize * 2, y: 0 },
+                { canvas: canvases.reduction, title: 'Modular Reduction ⊗', x: 0, y: canvasSize },
                 { canvas: canvases.fullPlane, title: 'Full Complex Plane ℂ', x: canvasSize, y: canvasSize }
             ];
             
@@ -4558,7 +4584,7 @@
                     item.x, item.y, canvasSize, canvasSize);
                 
                 // Draw title
-                const scale = baseSize / 1920;
+                const scale = baseWidth / 2880; // Adjusted for 3 columns
                 const fontSize = 18 * scale;
                 const titleY = item.y + 20 * scale;
                 const titleX = item.x + canvasSize / 2;
@@ -4575,7 +4601,7 @@
             
             // Draw legend on right if enabled
             if (includeLegend) {
-                drawLegendRight(tempCtx, tempCanvas.width, tempCanvas.height, baseSize, 'all');
+                drawLegendRight(tempCtx, tempCanvas.width, tempCanvas.height, baseWidth, 'all');
             }
             
             return tempCanvas.toDataURL('image/png');
@@ -4978,6 +5004,54 @@ Generated: ${new Date().toLocaleString()}
             gcdCache.set(`${origB},${origA}`, a); // Symmetric cache
             
             return a;
+        }
+
+        function primeFactorization(n) {
+            const factors = {};
+            let temp = n;
+            for (let i = 2; i <= temp; i++) {
+                while (temp % i === 0) {
+                    factors[i] = (factors[i] || 0) + 1;
+                    temp /= i;
+                }
+            }
+            return factors;
+        }
+
+        function formatPrimeFactorization(n) {
+            if (n === 1) return '1';
+            const factors = primeFactorization(n);
+            const parts = [];
+            const superscripts = ['⁰','¹','²','³','⁴','⁵','⁶','⁷','⁸','⁹'];
+            
+            for (const [prime, power] of Object.entries(factors)) {
+                if (power === 1) {
+                    parts.push(prime);
+                } else {
+                    let powerStr = '';
+                    String(power).split('').forEach(digit => {
+                        powerStr += superscripts[parseInt(digit)];
+                    });
+                    parts.push(`${prime}${powerStr}`);
+                }
+            }
+            return parts.join('×') || '1';
+        }
+
+        function isPrime(n) {
+            if (n < 2) return false;
+            if (n === 2) return true;
+            if (n % 2 === 0) return false;
+            for (let i = 3; i * i <= n; i += 2) {
+                if (n % i === 0) return false;
+            }
+            return true;
+        }
+
+        function updateGlobalLineThickness(value) {
+            state.globalLineThickness = parseFloat(value);
+            document.getElementById('globalLineThicknessValue').textContent = parseFloat(value).toFixed(2);
+            updateAll();
         }
 
         // Check if a point passes the advanced filters
@@ -6058,6 +6132,17 @@ Generated: ${new Date().toLocaleString()}
             const centerX = w / 2;
             const centerY = h / 2;
             const maxRadius = Math.min(w, h) * 0.42;
+            const lineThickness = state.globalLineThickness || 1.0;
+
+            // Update panel title dynamically
+            const panelTitle = document.querySelector('#reductionPanel .panel-title');
+            const panelSubtitle = document.querySelector('#reductionPanel .panel-subtitle');
+            if (panelTitle && panelSubtitle) {
+                panelTitle.textContent = `Modular Reduction Projection (M = ${M})`;
+                const factorization = formatPrimeFactorization(M);
+                const primeStatus = isPrime(M) ? 'Prime' : factorization;
+                panelSubtitle.textContent = `Prime Factorization: ${primeStatus} • Farey Channels: r/M → r'/M' where M' = M/gcd(r,M)`;
+            }
 
             // Get all divisors of M (these are the Farey channels)
             const divisors = [];
@@ -6081,7 +6166,7 @@ Generated: ${new Date().toLocaleString()}
                     ctx.beginPath();
                     ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
                     ctx.strokeStyle = '#ffd700';
-                    ctx.lineWidth = divisor === M ? 2.5 : 1.5;
+                    ctx.lineWidth = (divisor === M ? 2.5 : 1.5) * lineThickness;
                     ctx.globalAlpha = divisor === M ? 0.8 : 0.4;
                     ctx.stroke();
                     ctx.globalAlpha = 1;
@@ -6159,7 +6244,7 @@ Generated: ${new Date().toLocaleString()}
                             ctx.moveTo(point.x, point.y);
                             ctx.lineTo(targetX, targetY);
                             ctx.strokeStyle = '#ff0000';
-                            ctx.lineWidth = 0.8;
+                            ctx.lineWidth = 0.8 * lineThickness;
                             ctx.globalAlpha = 0.4;
                             ctx.stroke();
                             ctx.globalAlpha = 1;
@@ -7704,7 +7789,7 @@ Generated: ${new Date().toLocaleString()}
                                 </label>
                                 <label class="export-radio">
                                     <input type="radio" name="canvas" value="all">
-                                    <span>All Four Canvases</span>
+                                    <span>All Five Canvases</span>
                                 </label>
                             </div>
                         </div>
