@@ -1949,7 +1949,7 @@
                                 <span>Generate F_n</span>
                             </button>
                         </div>
-                        <div class="help-text">F_n max = current modulus m (currently F_<span id="maxFareyOrder">30</span> available). Option to include 0/n for each n.</div>
+                        <div class="help-text">F_n max = current modulus m (currently F_<span id="maxFareyOrder">101</span> available). Option to include 0/n for each n.</div>
                     </div>
 
                     <div class="control-item" data-tooltip="Add all residue classes k/m for a given modulus m, from 0/m to (m-1)/m">
@@ -7179,7 +7179,7 @@ Generated: ${new Date().toLocaleString()}
 
             // Reset UI
             document.getElementById('phaseSlider').value = 180;
-            document.getElementById('modulusInput').value = 30;
+            document.getElementById('modulusInput').value = 101;
             document.getElementById('primesInput').value = 150;
             document.getElementById('primeLimitInput').value = 10000;
             document.getElementById('speedSlider').value = 1;
@@ -7228,7 +7228,7 @@ Generated: ${new Date().toLocaleString()}
             document.getElementById('transformDescription').textContent = 'Standard: Maps unit disk to upper half-plane (modular forms)';
 
             document.getElementById('phaseValue').textContent = '180 degrees';
-            document.getElementById('modulusDisplay').textContent = '30';
+            document.getElementById('modulusDisplay').textContent = '101';
             document.getElementById('primesDisplay').textContent = '150';
             document.getElementById('primeLimitDisplay').textContent = '10000';
             document.getElementById('speedValue').textContent = '1.0×';
@@ -7250,7 +7250,7 @@ Generated: ${new Date().toLocaleString()}
             document.getElementById('diskZoomValue').textContent = '1.00×';
             document.getElementById('cayleyZoomValue').textContent = '1.00×';
             document.getElementById('nestedZoomValue').textContent = '1.00×';
-            document.getElementById('maxFareyOrder').textContent = '30';
+            document.getElementById('maxFareyOrder').textContent = '101';
 
             // Hide full plane panel
             document.getElementById('fullPlanePanel').style.display = 'none';
