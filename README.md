@@ -2,7 +2,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Farey Triangle & Cayley Transform - 6 Canvas Explorer</title>
+    <title>Farey Triangle & Cayley Transform - Unlimited Explorer</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;600&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap');
         
@@ -163,10 +163,6 @@
         
         .viz-grid.four-panel {
             grid-template-columns: repeat(2, 1fr);
-        }
-        
-        .viz-grid.six-panel {
-            grid-template-columns: repeat(3, 1fr);
         }
 
         .canvas-panel {
@@ -1026,7 +1022,7 @@
             <h1>
                 <span class="title-main">Farey Triangle & Cayley Transform</span>
             </h1>
-            <p class="subtitle">Hyperbolic Geometry · Number Theory · Modular Forms · 6 Interactive Canvases</p>
+            <p class="subtitle">Hyperbolic Geometry · Number Theory · Modular Forms</p>
             <p style="font-family: 'Fira Code', monospace; font-size: 0.85em; color: rgba(255, 255, 255, 0.5); margin-top: 10px;">
                 by Wessen Getachew · Twitter <a href="https://twitter.com/7dview" target="_blank" rel="noopener" style="color: #00ffff; text-decoration: none; transition: all 0.3s;">@7dview</a>
             </p>
@@ -1235,16 +1231,6 @@
                 </div>
                 <canvas id="fullPlaneCanvas" width="1000" height="1000"></canvas>
             </div>
-
-            <div class="canvas-panel" id="primitiveRootsPanel" style="display: none;">
-                <div class="panel-header">
-                    <div>
-                        <div class="panel-title">Primitive Roots Power Sequence</div>
-                        <div class="panel-subtitle">nth Roots of Unity: g^n mod M visualized on unit circle</div>
-                    </div>
-                </div>
-                <canvas id="primitiveRootsCanvas" width="1000" height="1000"></canvas>
-            </div>
         </div>
 
         <!-- Statistical Analysis Panel -->
@@ -1332,9 +1318,8 @@
                             <option value="cayley">Cayley Plane</option>
                             <option value="nested">Nested Rings</option>
                             <option value="reduction">Modular Reduction</option>
-                            <option value="primitive">Primitive Roots Power Sequence</option>
                             <option value="fullplane">Full Plane</option>
-                            <option value="all">All 6 Canvases</option>
+                            <option value="all">All 5 Canvases</option>
                         </select>
                     </div>
 
@@ -1644,27 +1629,6 @@
                         </div>
                         <input type="range" id="ringRotationSlider2" min="0" max="360" value="0" step="0.01" oninput="syncRingRotation(this.value)">
                         <input type="number" id="ringRotationInput2" value="0" min="0" max="3600" step="0.0000000000000001" style="margin-top: 8px;" placeholder="Degrees per ring" onchange="syncRingRotation(this.value)">
-                    </div>
-                </div>
-
-                <!-- Primitive Roots Generator -->
-                <div class="section-header">Primitive Roots & Generator</div>
-                <div class="control-row">
-                    <div class="control-item" data-tooltip="Select generator g for the power sequence. Auto-finds smallest primitive root if one exists.">
-                        <div class="control-label">
-                            <span>Generator g</span>
-                            <span class="control-value" id="generatorValue">3</span>
-                        </div>
-                        <div style="display: flex; gap: 8px; margin-top: 8px;">
-                            <button class="btn btn-secondary" onclick="findSmallestPrimitiveRoot()" style="flex: 1;">
-                                <span>Find Smallest Primitive Root</span>
-                            </button>
-                            <button class="btn btn-secondary" onclick="findAllPrimitiveRoots()" style="flex: 1;">
-                                <span>Show All Generators</span>
-                            </button>
-                        </div>
-                        <input type="number" id="generatorInput" value="3" min="1" step="1" style="margin-top: 8px;" placeholder="Enter generator g" onchange="updateGenerator(this.value)">
-                        <div class="help-text" id="generatorHelp">g=3 for M=101 (smallest primitive root)</div>
                     </div>
                 </div>
 
@@ -2345,18 +2309,6 @@
                         <span class="toggle-label">Reduction: Show Statistics Overlay</span>
                     </label>
 
-                    <input type="checkbox" id="togglePrimitiveRoots" checked>
-                    <label for="togglePrimitiveRoots" class="toggle-item">
-                        <div class="toggle-switch"></div>
-                        <span class="toggle-label">Primitive Roots Power Sequence</span>
-                    </label>
-
-                    <input type="checkbox" id="togglePrimitiveStats" checked>
-                    <label for="togglePrimitiveStats" class="toggle-item">
-                        <div class="toggle-switch"></div>
-                        <span class="toggle-label">Primitive Roots: Show Statistics Overlay</span>
-                    </label>
-
                     <input type="checkbox" id="toggleAnimate">
                     <label for="toggleAnimate" class="toggle-item">
                         <div class="toggle-switch"></div>
@@ -2472,7 +2424,6 @@
         let state = {
             phase: 0,
             modulus: 101,
-            generator: 3,
             numPrimes: 150,
             primeLimit: 10000,
             animSpeed: 1.0,
@@ -2563,14 +2514,10 @@
             cayley: null,
             nested: null,
             fullPlane: null,
-            reduction: null,
-            primitiveRoots: null,
             diskCtx: null,
             cayleyCtx: null,
             nestedCtx: null,
-            fullPlaneCtx: null,
-            reductionCtx: null,
-            primitiveRootsCtx: null
+            fullPlaneCtx: null
         };
 
         // ============================================================
@@ -2608,12 +2555,11 @@
             canvases.cayley = document.getElementById('cayleyCanvas');
             canvases.nested = document.getElementById('nestedCanvas');
             canvases.reduction = document.getElementById('reductionCanvas');
-            canvases.primitiveRoots = document.getElementById('primitiveRootsCanvas');
             canvases.fullPlane = document.getElementById('fullPlaneCanvas');
             
             const dpr = window.devicePixelRatio || 1;
             
-            [canvases.disk, canvases.cayley, canvases.nested, canvases.reduction, canvases.primitiveRoots, canvases.fullPlane].forEach(canvas => {
+            [canvases.disk, canvases.cayley, canvases.nested, canvases.reduction, canvases.fullPlane].forEach(canvas => {
                 const rect = canvas.getBoundingClientRect();
                 canvas.width = canvas.width * dpr;
                 canvas.height = canvas.height * dpr;
@@ -2625,7 +2571,6 @@
             canvases.cayleyCtx = canvases.cayley.getContext('2d');
             canvases.nestedCtx = canvases.nested.getContext('2d');
             canvases.reductionCtx = canvases.reduction.getContext('2d');
-            canvases.primitiveRootsCtx = canvases.primitiveRoots.getContext('2d');
             canvases.fullPlaneCtx = canvases.fullPlane.getContext('2d');
         }
 
@@ -3202,10 +3147,10 @@
                 
                 if (e.target.checked) {
                     panel.style.display = 'block';
-                    vizGrid.classList.add('six-panel');
+                    vizGrid.classList.add('four-panel');
                 } else {
                     panel.style.display = 'none';
-                    vizGrid.classList.remove('six-panel');
+                    vizGrid.classList.remove('four-panel');
                 }
                 
                 updateAll();
@@ -3213,16 +3158,6 @@
             
             document.getElementById('toggleReduction').addEventListener('change', e => {
                 const panel = document.getElementById('reductionPanel');
-                if (e.target.checked) {
-                    panel.style.display = 'block';
-                } else {
-                    panel.style.display = 'none';
-                }
-                updateAll();
-            });
-            
-            document.getElementById('togglePrimitiveRoots').addEventListener('change', e => {
-                const panel = document.getElementById('primitiveRootsPanel');
                 if (e.target.checked) {
                     panel.style.display = 'block';
                 } else {
@@ -3239,21 +3174,13 @@
                 }
             });
             
-            // Primitive roots canvas toggle
-            const primitiveStatsToggle = document.getElementById('togglePrimitiveStats');
-            if (primitiveStatsToggle) {
-                primitiveStatsToggle.addEventListener('change', updateAll);
-            }
-            
-            // Initialize all panels on load since toggles are checked by default
+            // Initialize full plane view on load since toggle is checked by default
             const fullPlanePanel = document.getElementById('fullPlanePanel');
             const reductionPanel = document.getElementById('reductionPanel');
-            const primitiveRootsPanel = document.getElementById('primitiveRootsPanel');
             const vizGrid = document.getElementById('vizGrid');
             fullPlanePanel.style.display = 'block';
             reductionPanel.style.display = 'block';
-            primitiveRootsPanel.style.display = 'block';
-            vizGrid.classList.add('six-panel');  // Show all 6 canvases in 2×3 grid
+            vizGrid.classList.add('four-panel');
             
             // Update max Farey order display when modulus changes
             document.getElementById('modulusInput').addEventListener('change', () => {
@@ -4557,7 +4484,7 @@
                 let dataURL;
                 
                 if (canvasSelection === 'all') {
-                    // Create composite frame with all 6 canvases
+                    // Create composite frame with all 5 canvases
                     dataURL = captureCompositeFrame(includeLegend);
                 } else {
                     // Single canvas capture
@@ -4579,10 +4506,6 @@
                         case 'reduction':
                             sourceCanvas = canvases.reduction;
                             canvasType = 'reduction';
-                            break;
-                        case 'primitive':
-                            sourceCanvas = canvases.primitiveRoots;
-                            canvasType = 'primitive';
                             break;
                         case 'fullplane':
                             sourceCanvas = canvases.fullPlane;
@@ -4647,13 +4570,12 @@
         }
 
         function captureCompositeFrame(includeLegend) {
-            // Create 2×3 grid layout for all 6 canvases
+            // Create 2×3 grid layout for all 5 canvases
             const maxDim = Math.max(
                 canvases.disk.width, canvases.disk.height,
                 canvases.cayley.width, canvases.cayley.height,
                 canvases.nested.width, canvases.nested.height,
                 canvases.reduction.width, canvases.reduction.height,
-                canvases.primitiveRoots.width, canvases.primitiveRoots.height,
                 canvases.fullPlane.width, canvases.fullPlane.height
             );
             
@@ -4676,16 +4598,15 @@
             
             const canvasSize = maxDim;
             
-            // Draw all 6 canvases in 2×3 grid layout:
+            // Draw 5 canvases in 2×3 grid layout:
             // Row 1: Disk | Cayley | Nested
-            // Row 2: Reduction | Primitive Roots | Full Plane
+            // Row 2: Reduction | Full Plane | (empty)
             const sources = [
                 { canvas: canvases.disk, title: 'Unit Disk 𝔻', x: 0, y: 0 },
                 { canvas: canvases.cayley, title: 'Upper Half-Plane ℍ', x: canvasSize, y: 0 },
                 { canvas: canvases.nested, title: 'Nested Rings ⊚', x: canvasSize * 2, y: 0 },
                 { canvas: canvases.reduction, title: 'Modular Reduction ⊗', x: 0, y: canvasSize },
-                { canvas: canvases.primitiveRoots, title: 'Primitive Roots ⚡', x: canvasSize, y: canvasSize },
-                { canvas: canvases.fullPlane, title: 'Full Complex Plane ℂ', x: canvasSize * 2, y: canvasSize }
+                { canvas: canvases.fullPlane, title: 'Full Complex Plane ℂ', x: canvasSize, y: canvasSize }
             ];
             
             sources.forEach(item => {
@@ -5156,85 +5077,6 @@ Generated: ${new Date().toLocaleString()}
                 if (n % i === 0) return false;
             }
             return true;
-        }
-
-        // Primitive root utility functions
-        function modPow(base, exp, mod) {
-            let result = 1;
-            base = base % mod;
-            while (exp > 0) {
-                if (exp % 2 === 1) result = (result * base) % mod;
-                base = (base * base) % mod;
-                exp = Math.floor(exp / 2);
-            }
-            return result;
-        }
-
-        function getUniquePrimeFactors(n) {
-            const factors = new Set();
-            let temp = n;
-            for (let p = 2; p * p <= temp; p++) {
-                if (temp % p === 0) {
-                    factors.add(p);
-                    while (temp % p === 0) temp /= p;
-                }
-            }
-            if (temp > 1) factors.add(temp);
-            return Array.from(factors);
-        }
-
-        function isPrimitiveRoot(g, M) {
-            if (gcd(g, M) !== 1) return false;
-            const phiM = phi(M);
-            const primeFactors = getUniquePrimeFactors(phiM);
-            for (let p of primeFactors) {
-                if (modPow(g, phiM / p, M) === 1) return false;
-            }
-            return true;
-        }
-
-        function hasPrimitiveRoots(M) {
-            if (M === 1 || M === 2 || M === 4) return true;
-            
-            // Check if M = p^k
-            const factors = primeFactorization(M);
-            const keys = Object.keys(factors);
-            if (keys.length === 1) return true;
-            
-            // Check if M = 2*p^k (p odd prime)
-            if (keys.length === 2 && factors['2'] === 1) {
-                return true;
-            }
-            
-            return false;
-        }
-
-        function findPrimitiveRoots(M, limit = 10) {
-            // Primitive roots only exist for M = 1, 2, 4, p^k, 2p^k (p odd prime)
-            if (M === 1) return [];
-            if (M === 2) return [1];
-            if (M === 4) return [3];
-            
-            // Check if M has the form for primitive roots to exist
-            if (!hasPrimitiveRoots(M)) return [];
-            
-            const roots = [];
-            for (let g = 1; g < M && roots.length < limit; g++) {
-                if (isPrimitiveRoot(g, M)) {
-                    roots.push(g);
-                }
-            }
-            return roots;
-        }
-
-        function generatePowerSequence(g, M) {
-            // Generate g^0, g^1, g^2, ..., g^(φ(M)-1) mod M
-            const phiM = phi(M);
-            const sequence = [];
-            for (let k = 0; k < phiM; k++) {
-                sequence.push(modPow(g, k, M));
-            }
-            return sequence;
         }
 
         function updateGlobalLineThickness(value) {
@@ -6819,168 +6661,6 @@ Generated: ${new Date().toLocaleString()}
             }
         }
 
-        function drawPrimitiveRoots() {
-            const canvas = canvases.primitiveRoots;
-            const ctx = canvases.primitiveRootsCtx;
-            const w = canvas.width / (window.devicePixelRatio || 1);
-            const h = canvas.height / (window.devicePixelRatio || 1);
-            const cx = w / 2;
-            const cy = h / 2;
-            
-            // Clear canvas
-            ctx.clearRect(0, 0, w, h);
-            ctx.fillStyle = '#0a0a0a';
-            ctx.fillRect(0, 0, w, h);
-            
-            const M = state.modulus;
-            const radius = Math.min(w, h) * 0.42;
-            
-            // Draw unit circle
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.arc(cx, cy, radius, 0, 2 * Math.PI);
-            ctx.stroke();
-            
-            // Find primitive roots
-            const primitiveRoots = findPrimitiveRoots(M, 5); // Get up to 5 primitive roots
-            
-            if (primitiveRoots.length === 0) {
-                // No primitive roots exist for this M
-                ctx.fillStyle = '#ff6666';
-                ctx.font = 'bold 18px "Fira Code"';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(`No primitive roots exist for M = ${M}`, cx, cy);
-                ctx.font = '14px "Fira Code"';
-                ctx.fillStyle = '#999';
-                ctx.fillText('Primitive roots only exist for:', cx, cy + 30);
-                ctx.fillText('M = 1, 2, 4, pᵏ, or 2pᵏ (p odd prime)', cx, cy + 50);
-                return;
-            }
-            
-            // Use first primitive root
-            const g = primitiveRoots[0];
-            const phiM = phi(M);
-            const powerSequence = generatePowerSequence(g, M);
-            
-            // Color palette for sequence
-            const hueStart = 180; // Cyan
-            const hueEnd = 300; // Magenta
-            
-            // Draw all M residue positions
-            for (let r = 0; r < M; r++) {
-                const angle = 2 * Math.PI * r / M - Math.PI / 2; // Start from top
-                const x = cx + radius * Math.cos(angle);
-                const y = cy + radius * Math.sin(angle);
-                
-                ctx.fillStyle = 'rgba(100, 100, 100, 0.3)';
-                ctx.beginPath();
-                ctx.arc(x, y, 3, 0, 2 * Math.PI);
-                ctx.fill();
-            }
-            
-            // Draw power sequence points with connections
-            for (let k = 0; k < powerSequence.length; k++) {
-                const val = powerSequence[k];
-                const angle = 2 * Math.PI * val / M - Math.PI / 2;
-                const x = cx + radius * Math.cos(angle);
-                const y = cy + radius * Math.sin(angle);
-                
-                // Calculate color based on position in sequence
-                const hue = hueStart + (hueEnd - hueStart) * (k / phiM);
-                const color = `hsl(${hue}, 80%, 60%)`;
-                
-                // Draw connection line to next point
-                if (k < powerSequence.length - 1) {
-                    const nextVal = powerSequence[k + 1];
-                    const nextAngle = 2 * Math.PI * nextVal / M - Math.PI / 2;
-                    const nextX = cx + radius * Math.cos(nextAngle);
-                    const nextY = cy + radius * Math.sin(nextAngle);
-                    
-                    ctx.strokeStyle = color + '40'; // Semi-transparent
-                    ctx.lineWidth = 1.5;
-                    ctx.beginPath();
-                    ctx.moveTo(x, y);
-                    ctx.lineTo(nextX, nextY);
-                    ctx.stroke();
-                }
-                
-                // Draw point
-                ctx.fillStyle = color;
-                ctx.shadowColor = color;
-                ctx.shadowBlur = 8;
-                ctx.beginPath();
-                ctx.arc(x, y, 5, 0, 2 * Math.PI);
-                ctx.fill();
-                ctx.shadowBlur = 0;
-                
-                // Add label for first few powers
-                if (k < 10 || (k < 20 && M < 50)) {
-                    ctx.fillStyle = '#fff';
-                    ctx.font = '11px "Fira Code"';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    const labelRadius = radius + 18;
-                    const labelX = cx + labelRadius * Math.cos(angle);
-                    const labelY = cy + labelRadius * Math.sin(angle);
-                    ctx.strokeStyle = '#000';
-                    ctx.lineWidth = 3;
-                    ctx.strokeText(`${g}^${k}`, labelX, labelY);
-                    ctx.fillText(`${g}^${k}`, labelX, labelY);
-                }
-            }
-            
-            // Draw statistics overlay if enabled
-            if (document.getElementById('togglePrimitiveStats').checked) {
-                const padding = 15;
-                const boxWidth = 280;
-                const boxHeight = 140;
-                const boxX = padding;
-                const boxY = padding;
-                
-                // Background box
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
-                ctx.strokeStyle = 'rgba(255, 215, 0, 0.8)';
-                ctx.lineWidth = 2;
-                ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
-                ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
-                
-                // Title
-                ctx.fillStyle = '#ffd700';
-                ctx.font = 'bold 16px "Fira Code"';
-                ctx.textAlign = 'left';
-                ctx.textBaseline = 'top';
-                ctx.fillText('Primitive Root Analysis', boxX + 10, boxY + 10);
-                
-                // Statistics
-                ctx.fillStyle = '#fff';
-                ctx.font = '13px "Fira Code"';
-                let yPos = boxY + 35;
-                const lineHeight = 20;
-                
-                ctx.fillText(`Modulus M: ${M}`, boxX + 10, yPos);
-                yPos += lineHeight;
-                ctx.fillText(`φ(M): ${phiM}`, boxX + 10, yPos);
-                yPos += lineHeight;
-                ctx.fillText(`Primitive Root g: ${g}`, boxX + 10, yPos);
-                yPos += lineHeight;
-                ctx.fillText(`All roots: ${primitiveRoots.join(', ')}`, boxX + 10, yPos);
-                yPos += lineHeight;
-                ctx.fillText(`Cycle length: ${phiM}`, boxX + 10, yPos);
-            }
-            
-            // Title at bottom
-            ctx.fillStyle = '#ffd700';
-            ctx.font = 'bold 18px "Fira Code"';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'bottom';
-            ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-            ctx.shadowBlur = 8;
-            ctx.fillText(`Primitive Root Power Sequence: g = ${g} (mod ${M})`, cx, h - 15);
-            ctx.shadowBlur = 0;
-        }
-
         function drawNested() {
             const canvas = canvases.nested;
             const ctx = canvases.nestedCtx;
@@ -7727,11 +7407,6 @@ Generated: ${new Date().toLocaleString()}
                 drawFullPlane();
             }
             
-            // Draw primitive roots if visible
-            if (document.getElementById('togglePrimitiveRoots').checked) {
-                drawPrimitiveRoots();
-            }
-            
             // Update stats if panel is visible
             if (document.getElementById('statsPanel').style.display !== 'none') {
                 updateStats();
@@ -8250,16 +7925,12 @@ Generated: ${new Date().toLocaleString()}
                                     <span>Modular Reduction Only</span>
                                 </label>
                                 <label class="export-radio">
-                                    <input type="radio" name="canvas" value="primitive">
-                                    <span>Primitive Roots Power Sequence Only</span>
-                                </label>
-                                <label class="export-radio">
                                     <input type="radio" name="canvas" value="fullplane">
                                     <span>Full Complex Plane Only</span>
                                 </label>
                                 <label class="export-radio">
                                     <input type="radio" name="canvas" value="all">
-                                    <span>All Six Canvases</span>
+                                    <span>All Five Canvases</span>
                                 </label>
                             </div>
                         </div>
@@ -8372,7 +8043,7 @@ Generated: ${new Date().toLocaleString()}
                 const exportStyle = document.getElementById('exportStyle').value;
 
                 // Validate canvases exist
-                if (!canvases.disk || !canvases.cayley || !canvases.nested || !canvases.reduction || !canvases.primitiveRoots || !canvases.fullPlane) {
+                if (!canvases.disk || !canvases.cayley || !canvases.nested || !canvases.fullPlane) {
                     alert('Error: Canvases not initialized. Please refresh the page.');
                     return;
                 }
@@ -8400,28 +8071,18 @@ Generated: ${new Date().toLocaleString()}
                     const legendSpace = includeLegend ? 350 : 0;
 
                     if (canvasSelection === 'all') {
-                        // 2×3 grid for all 6 canvases
-                        const cols = 3;
-                        const rows = 2;
-                        const canvasSize = baseSize / 2;
-                        const gridWidth = canvasSize * cols;
-                        const gridHeight = canvasSize * rows;
-                        
-                        tempCanvas.width = gridWidth + legendSpace;
-                        tempCanvas.height = gridHeight;
+                        tempCanvas.width = baseSize + legendSpace;
+                        tempCanvas.height = baseSize;
                         
                         tempCtx.fillStyle = '#0a0e27';
                         tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
 
+                        const canvasSize = baseSize / 2;
                         const sourceCanvases = [
-                            // Top row
                             { canvas: canvases.disk, title: 'Unit Disk 𝔻', x: 0, y: 0 },
                             { canvas: canvases.cayley, title: 'Upper Half-Plane ℍ', x: canvasSize, y: 0 },
-                            { canvas: canvases.nested, title: 'Nested Rings ⊚', x: canvasSize * 2, y: 0 },
-                            // Bottom row
-                            { canvas: canvases.reduction, title: 'Modular Reduction ⊗', x: 0, y: canvasSize },
-                            { canvas: canvases.primitiveRoots, title: 'Primitive Roots ⚡', x: canvasSize, y: canvasSize },
-                            { canvas: canvases.fullPlane, title: 'Full Complex Plane ℂ', x: canvasSize * 2, y: canvasSize }
+                            { canvas: canvases.nested, title: 'Nested Rings ⊚', x: 0, y: canvasSize },
+                            { canvas: canvases.fullPlane, title: 'Full Complex Plane ℂ', x: canvasSize, y: canvasSize }
                         ];
                         
                         sourceCanvases.forEach((item) => {
@@ -8441,7 +8102,7 @@ Generated: ${new Date().toLocaleString()}
                         });
 
                         if (includeLegend) {
-                            drawEnhancedLegend(tempCtx, tempCanvas.width, tempCanvas.height, gridWidth, 'all', 
+                            drawEnhancedLegend(tempCtx, tempCanvas.width, tempCanvas.height, baseSize, 'all', 
                                 includeParameters, includeConnections, includeStatistics, legendSize);
                         }
                     } else {
@@ -8464,14 +8125,6 @@ Generated: ${new Date().toLocaleString()}
                             case 'nested':
                                 sourceCanvas = canvases.nested;
                                 title = 'Nested Modular Rings';
-                                break;
-                            case 'reduction':
-                                sourceCanvas = canvases.reduction;
-                                title = 'Modular Reduction Projection';
-                                break;
-                            case 'primitive':
-                                sourceCanvas = canvases.primitiveRoots;
-                                title = 'Primitive Roots Power Sequence';
                                 break;
                             case 'fullplane':
                                 sourceCanvas = canvases.fullPlane;
@@ -8555,15 +8208,11 @@ Generated: ${new Date().toLocaleString()}
                 case 'disk': sourceCanvas = canvases.disk; break;
                 case 'cayley': sourceCanvas = canvases.cayley; break;
                 case 'nested': sourceCanvas = canvases.nested; break;
-                case 'reduction': sourceCanvas = canvases.reduction; break;
-                case 'primitive': sourceCanvas = canvases.primitiveRoots; break;
                 case 'fullplane': sourceCanvas = canvases.fullPlane; break;
                 case 'all':
-                    const canvasSize = vizSize / 3;
-                    // 2×3 grid: top row (disk, cayley, nested), bottom row (reduction, primitive, fullplane)
-                    [[canvases.disk, 0, 0], [canvases.cayley, canvasSize, 0], [canvases.nested, canvasSize*2, 0],
-                     [canvases.reduction, 0, canvasSize], [canvases.primitiveRoots, canvasSize, canvasSize], 
-                     [canvases.fullPlane, canvasSize*2, canvasSize]].forEach(([c, dx, dy]) => {
+                    const canvasSize = vizSize / 2;
+                    [[canvases.disk, 0, 0], [canvases.cayley, canvasSize, 0],
+                     [canvases.nested, 0, canvasSize], [canvases.fullPlane, canvasSize, canvasSize]].forEach(([c, dx, dy]) => {
                         if (c) ctx.drawImage(c, 0, 0, c.width, c.height, vizX + dx, vizY + dy, canvasSize, canvasSize);
                     });
                     break;
