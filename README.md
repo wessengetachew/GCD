@@ -8093,7 +8093,7 @@ Generated: ${new Date().toLocaleString()}
                 const exportStyle = document.getElementById('exportStyle').value;
 
                 // Validate canvases exist
-                if (!canvases.disk || !canvases.cayley || !canvases.nested || !canvases.fullPlane) {
+                if (!canvases.disk || !canvases.cayley || !canvases.nested || !canvases.reduction || !canvases.fullPlane) {
                     alert('Error: Canvases not initialized. Please refresh the page.');
                     return;
                 }
@@ -8121,17 +8121,26 @@ Generated: ${new Date().toLocaleString()}
                     const legendSpace = includeLegend ? 350 : 0;
 
                     if (canvasSelection === 'all') {
-                        tempCanvas.width = baseSize + legendSpace;
-                        tempCanvas.height = baseSize;
+                        // 2×3 grid for all 5 canvases
+                        const cols = 3;
+                        const rows = 2;
+                        const canvasSize = baseSize / 2;
+                        const gridWidth = canvasSize * cols;
+                        const gridHeight = canvasSize * rows;
+                        
+                        tempCanvas.width = gridWidth + legendSpace;
+                        tempCanvas.height = gridHeight;
                         
                         tempCtx.fillStyle = '#0a0e27';
                         tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
 
-                        const canvasSize = baseSize / 2;
                         const sourceCanvases = [
+                            // Top row
                             { canvas: canvases.disk, title: 'Unit Disk 𝔻', x: 0, y: 0 },
                             { canvas: canvases.cayley, title: 'Upper Half-Plane ℍ', x: canvasSize, y: 0 },
-                            { canvas: canvases.nested, title: 'Nested Rings ⊚', x: 0, y: canvasSize },
+                            { canvas: canvases.nested, title: 'Nested Rings ⊚', x: canvasSize * 2, y: 0 },
+                            // Bottom row
+                            { canvas: canvases.reduction, title: 'Modular Reduction ⊗', x: 0, y: canvasSize },
                             { canvas: canvases.fullPlane, title: 'Full Complex Plane ℂ', x: canvasSize, y: canvasSize }
                         ];
                         
@@ -8152,7 +8161,7 @@ Generated: ${new Date().toLocaleString()}
                         });
 
                         if (includeLegend) {
-                            drawEnhancedLegend(tempCtx, tempCanvas.width, tempCanvas.height, baseSize, 'all', 
+                            drawEnhancedLegend(tempCtx, tempCanvas.width, tempCanvas.height, gridWidth, 'all', 
                                 includeParameters, includeConnections, includeStatistics, legendSize);
                         }
                     } else {
@@ -8175,6 +8184,10 @@ Generated: ${new Date().toLocaleString()}
                             case 'nested':
                                 sourceCanvas = canvases.nested;
                                 title = 'Nested Modular Rings';
+                                break;
+                            case 'reduction':
+                                sourceCanvas = canvases.reduction;
+                                title = 'Modular Reduction Projection';
                                 break;
                             case 'fullplane':
                                 sourceCanvas = canvases.fullPlane;
@@ -8258,11 +8271,15 @@ Generated: ${new Date().toLocaleString()}
                 case 'disk': sourceCanvas = canvases.disk; break;
                 case 'cayley': sourceCanvas = canvases.cayley; break;
                 case 'nested': sourceCanvas = canvases.nested; break;
+                case 'reduction': sourceCanvas = canvases.reduction; break;
                 case 'fullplane': sourceCanvas = canvases.fullPlane; break;
                 case 'all':
                     const canvasSize = vizSize / 2;
+                    // Top row: disk, cayley, nested
+                    // Bottom row: reduction, fullplane
                     [[canvases.disk, 0, 0], [canvases.cayley, canvasSize, 0],
-                     [canvases.nested, 0, canvasSize], [canvases.fullPlane, canvasSize, canvasSize]].forEach(([c, dx, dy]) => {
+                     [canvases.nested, 0, canvasSize], [canvases.reduction, canvasSize/2, canvasSize*1.5],
+                     [canvases.fullPlane, canvasSize*1.5, canvasSize]].forEach(([c, dx, dy]) => {
                         if (c) ctx.drawImage(c, 0, 0, c.width, c.height, vizX + dx, vizY + dy, canvasSize, canvasSize);
                     });
                     break;
