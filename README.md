@@ -1231,6 +1231,16 @@
                 </div>
                 <canvas id="fullPlaneCanvas" width="1000" height="1000"></canvas>
             </div>
+
+            <div class="canvas-panel" id="primitiveRootsPanel" style="display: none;">
+                <div class="panel-header">
+                    <div>
+                        <div class="panel-title">Primitive Roots Power Sequence</div>
+                        <div class="panel-subtitle">nth Roots of Unity: g^n mod M visualized on unit circle</div>
+                    </div>
+                </div>
+                <canvas id="primitiveRootsCanvas" width="1000" height="1000"></canvas>
+            </div>
         </div>
 
         <!-- Statistical Analysis Panel -->
@@ -1629,6 +1639,27 @@
                         </div>
                         <input type="range" id="ringRotationSlider2" min="0" max="360" value="0" step="0.01" oninput="syncRingRotation(this.value)">
                         <input type="number" id="ringRotationInput2" value="0" min="0" max="3600" step="0.0000000000000001" style="margin-top: 8px;" placeholder="Degrees per ring" onchange="syncRingRotation(this.value)">
+                    </div>
+                </div>
+
+                <!-- Primitive Roots Generator -->
+                <div class="section-header">Primitive Roots & Generator</div>
+                <div class="control-row">
+                    <div class="control-item" data-tooltip="Select generator g for the power sequence. Auto-finds smallest primitive root if one exists.">
+                        <div class="control-label">
+                            <span>Generator g</span>
+                            <span class="control-value" id="generatorValue">3</span>
+                        </div>
+                        <div style="display: flex; gap: 8px; margin-top: 8px;">
+                            <button class="btn btn-secondary" onclick="findSmallestPrimitiveRoot()" style="flex: 1;">
+                                <span>Find Smallest Primitive Root</span>
+                            </button>
+                            <button class="btn btn-secondary" onclick="findAllPrimitiveRoots()" style="flex: 1;">
+                                <span>Show All Generators</span>
+                            </button>
+                        </div>
+                        <input type="number" id="generatorInput" value="3" min="1" step="1" style="margin-top: 8px;" placeholder="Enter generator g" onchange="updateGenerator(this.value)">
+                        <div class="help-text" id="generatorHelp">g=3 for M=101 (smallest primitive root)</div>
                     </div>
                 </div>
 
@@ -2309,6 +2340,18 @@
                         <span class="toggle-label">Reduction: Show Statistics Overlay</span>
                     </label>
 
+                    <input type="checkbox" id="togglePrimitiveRoots" checked>
+                    <label for="togglePrimitiveRoots" class="toggle-item">
+                        <div class="toggle-switch"></div>
+                        <span class="toggle-label">Primitive Roots Power Sequence</span>
+                    </label>
+
+                    <input type="checkbox" id="togglePrimitiveStats" checked>
+                    <label for="togglePrimitiveStats" class="toggle-item">
+                        <div class="toggle-switch"></div>
+                        <span class="toggle-label">Primitive Roots: Show Statistics Overlay</span>
+                    </label>
+
                     <input type="checkbox" id="toggleAnimate">
                     <label for="toggleAnimate" class="toggle-item">
                         <div class="toggle-switch"></div>
@@ -2424,6 +2467,7 @@
         let state = {
             phase: 0,
             modulus: 101,
+            generator: 3,
             numPrimes: 150,
             primeLimit: 10000,
             animSpeed: 1.0,
@@ -2514,10 +2558,14 @@
             cayley: null,
             nested: null,
             fullPlane: null,
+            reduction: null,
+            primitiveRoots: null,
             diskCtx: null,
             cayleyCtx: null,
             nestedCtx: null,
-            fullPlaneCtx: null
+            fullPlaneCtx: null,
+            reductionCtx: null,
+            primitiveRootsCtx: null
         };
 
         // ============================================================
@@ -2555,11 +2603,12 @@
             canvases.cayley = document.getElementById('cayleyCanvas');
             canvases.nested = document.getElementById('nestedCanvas');
             canvases.reduction = document.getElementById('reductionCanvas');
+            canvases.primitiveRoots = document.getElementById('primitiveRootsCanvas');
             canvases.fullPlane = document.getElementById('fullPlaneCanvas');
             
             const dpr = window.devicePixelRatio || 1;
             
-            [canvases.disk, canvases.cayley, canvases.nested, canvases.reduction, canvases.fullPlane].forEach(canvas => {
+            [canvases.disk, canvases.cayley, canvases.nested, canvases.reduction, canvases.primitiveRoots, canvases.fullPlane].forEach(canvas => {
                 const rect = canvas.getBoundingClientRect();
                 canvas.width = canvas.width * dpr;
                 canvas.height = canvas.height * dpr;
@@ -2571,6 +2620,7 @@
             canvases.cayleyCtx = canvases.cayley.getContext('2d');
             canvases.nestedCtx = canvases.nested.getContext('2d');
             canvases.reductionCtx = canvases.reduction.getContext('2d');
+            canvases.primitiveRootsCtx = canvases.primitiveRoots.getContext('2d');
             canvases.fullPlaneCtx = canvases.fullPlane.getContext('2d');
         }
 
