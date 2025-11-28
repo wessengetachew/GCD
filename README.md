@@ -7340,6 +7340,22 @@ Generated: ${new Date().toLocaleString()}
                                 <input type="checkbox" id="includeLegend" checked>
                                 <span>Include Detailed Legend</span>
                             </label>
+                            
+                            <!-- Legend Size Control -->
+                            <div style="margin-left: 24px; margin-top: 8px; margin-bottom: 12px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                                    <span style="color: rgba(255,255,255,0.7); font-size: 0.85em;">Legend Text Size</span>
+                                    <span id="legendSizeValue" style="color: var(--accent); font-weight: bold; font-size: 0.85em;">100%</span>
+                                </div>
+                                <input type="range" id="legendSizeSlider" min="70" max="150" value="100" step="5" 
+                                    style="width: 100%; height: 6px; background: linear-gradient(to right, var(--primary), var(--accent));"
+                                    oninput="document.getElementById('legendSizeValue').textContent = this.value + '%'">
+                            </div>
+                            
+                            <label class="export-checkbox">
+                                <input type="checkbox" id="includeStatistics" checked>
+                                <span>Include Statistical Analysis</span>
+                            </label>
                             <label class="export-checkbox">
                                 <input type="checkbox" id="includeWatermark" checked>
                                 <span>Include Watermark (Wessen Getachew)</span>
@@ -7386,6 +7402,8 @@ Generated: ${new Date().toLocaleString()}
                 const includeWatermark = document.getElementById('includeWatermark').checked;
                 const includeParameters = document.getElementById('includeParameters').checked;
                 const includeConnections = document.getElementById('includeConnections').checked;
+                const includeStatistics = document.getElementById('includeStatistics').checked;
+                const legendSize = parseInt(document.getElementById('legendSizeSlider').value) / 100;
 
                 // Validate canvases exist
                 if (!canvases.disk || !canvases.cayley || !canvases.nested || !canvases.fullPlane) {
@@ -7405,7 +7423,7 @@ Generated: ${new Date().toLocaleString()}
                 const tempCanvas = document.createElement('canvas');
                 const tempCtx = tempCanvas.getContext('2d');
                 const baseSize = Math.min(width, height);
-                const legendSpace = includeLegend ? 300 : 0; // Wider legend space
+                const legendSpace = includeLegend ? 350 : 0; // Wider for more details
 
                 if (canvasSelection === 'all') {
                     // Export all four canvases in 2x2 grid
@@ -7441,7 +7459,8 @@ Generated: ${new Date().toLocaleString()}
                     });
 
                     if (includeLegend) {
-                        drawCompleteLegend(tempCtx, tempCanvas.width, tempCanvas.height, baseSize, 'all', includeParameters, includeConnections);
+                        drawEnhancedLegend(tempCtx, tempCanvas.width, tempCanvas.height, baseSize, 'all', 
+                            includeParameters, includeConnections, includeStatistics, legendSize);
                     }
                 } else {
                     // Export single canvas
@@ -7486,7 +7505,8 @@ Generated: ${new Date().toLocaleString()}
                     }
 
                     if (includeLegend) {
-                        drawCompleteLegend(tempCtx, tempCanvas.width, tempCanvas.height, baseSize, canvasSelection, includeParameters, includeConnections);
+                        drawEnhancedLegend(tempCtx, tempCanvas.width, tempCanvas.height, baseSize, canvasSelection, 
+                            includeParameters, includeConnections, includeStatistics, legendSize);
                     }
                 }
 
@@ -7506,13 +7526,16 @@ Generated: ${new Date().toLocaleString()}
             }
         }
 
-        // Complete legend with all info in right panel
-        function drawCompleteLegend(ctx, totalWidth, totalHeight, baseSize, canvasType, includeParams, includeConns) {
+        // Enhanced legend with comprehensive details
+        function drawEnhancedLegend(ctx, totalWidth, totalHeight, baseSize, canvasType, includeParams, includeConns, includeStats, sizeScale) {
             const legendX = baseSize + 20;
-            const legendWidth = 260;
-            let currentY = 40;
-            const lineHeight = 20;
-            const sectionGap = 10;
+            const legendWidth = 310;
+            let currentY = 30;
+            const baseLineHeight = 18;
+            const lineHeight = baseLineHeight * sizeScale;
+            const baseFontSize = 11;
+            const fontSize = baseFontSize * sizeScale;
+            const sectionGap = 8 * sizeScale;
             
             // Legend background
             ctx.fillStyle = 'rgba(10, 14, 39, 0.95)';
@@ -7523,57 +7546,100 @@ Generated: ${new Date().toLocaleString()}
             
             // Title
             ctx.fillStyle = '#ffd700';
-            ctx.font = 'bold 16px "Fira Code"';
+            ctx.font = `bold ${14 * sizeScale}px "Fira Code"`;
             ctx.textAlign = 'left';
             ctx.textBaseline = 'top';
-            ctx.fillText('Legend', legendX, currentY);
-            currentY += lineHeight * 1.5 + sectionGap;
+            ctx.fillText('LEGEND & ANALYSIS', legendX, currentY);
+            currentY += lineHeight * 1.8;
             
             // Color scheme
-            ctx.font = 'bold 13px "Fira Code"';
+            ctx.font = `bold ${12 * sizeScale}px "Fira Code"`;
             ctx.fillText('Color Coding:', legendX, currentY);
-            currentY += lineHeight * 1.2;
+            currentY += lineHeight * 1.1;
             
-            ctx.font = '11px "Fira Code"';
+            ctx.font = `${fontSize}px "Fira Code"`;
+            const colorSize = 11 * sizeScale;
             const colors = [
-                { color: CONFIG.colors.farey, text: 'GCD=1 (Coprime)' },
-                { color: '#e74c3c', text: 'GCD=m (Divisible)' },
-                { color: '#00ffff', text: 'GCD=2' },
-                { color: '#9b59b6', text: 'GCD=3' },
-                { color: CONFIG.colors.prime, text: 'Prime Numbers' }
+                { color: CONFIG.colors.farey, text: 'GCD=1 (Coprime to m)' },
+                { color: '#e74c3c', text: 'GCD=m (Divisible by m)' },
+                { color: '#00ffff', text: 'GCD=2 (Even, not by m)' },
+                { color: '#9b59b6', text: 'GCD=3 (Triple, not by m)' },
+                { color: CONFIG.colors.prime, text: 'Prime Numbers p' }
             ];
             
             colors.forEach(item => {
                 ctx.fillStyle = item.color;
-                ctx.fillRect(legendX, currentY, 12, 12);
+                ctx.fillRect(legendX, currentY, colorSize, colorSize);
                 ctx.fillStyle = 'rgba(255,255,255,0.9)';
-                ctx.fillText(item.text, legendX + 18, currentY);
+                ctx.fillText(item.text, legendX + colorSize + 8, currentY);
                 currentY += lineHeight;
             });
             
             currentY += sectionGap;
             
-            // Parameters section (if requested)
+            // Statistical Analysis
+            if (includeStats) {
+                ctx.fillStyle = '#ffd700';
+                ctx.font = `bold ${12 * sizeScale}px "Fira Code"`;
+                ctx.fillText('Statistics:', legendX, currentY);
+                currentY += lineHeight * 1.1;
+                
+                ctx.font = `${fontSize}px "Fira Code"`;
+                ctx.fillStyle = 'rgba(255,255,255,0.9)';
+                
+                // Calculate comprehensive stats
+                const phi_m = eulerPhi(state.modulus);
+                const coprimeCount = state.fareyPoints.filter(fp => gcd(fp.num, fp.den) === 1).length;
+                const coprimeDensity = (coprimeCount / state.fareyPoints.length * 100).toFixed(1);
+                
+                // Ring analysis
+                let totalRingPoints = 0;
+                let totalCoprimeRingPoints = 0;
+                for (let m = state.minRing; m <= state.maxRing; m++) {
+                    totalRingPoints += m;
+                    totalCoprimeRingPoints += eulerPhi(m);
+                }
+                const ringCoprimeDensity = (totalCoprimeRingPoints / totalRingPoints * 100).toFixed(1);
+                
+                const stats = [
+                    `φ(${state.modulus}) = ${phi_m} coprime`,
+                    `Coprime: ${coprimeCount}/${state.fareyPoints.length} (${coprimeDensity}%)`,
+                    `Ring pts: ${totalRingPoints} total`,
+                    `Ring coprime: ${totalCoprimeRingPoints} (${ringCoprimeDensity}%)`,
+                    `Prime density: ${(state.primes.length / state.primeLimit * 100).toFixed(1)}%`,
+                    `Rings active: ${state.maxRing - state.minRing + 1}`
+                ];
+                
+                stats.forEach(stat => {
+                    ctx.fillText(stat, legendX, currentY);
+                    currentY += lineHeight;
+                });
+                
+                currentY += sectionGap;
+            }
+            
+            // Parameters section
             if (includeParams) {
                 ctx.fillStyle = '#ffd700';
-                ctx.font = 'bold 13px "Fira Code"';
+                ctx.font = `bold ${12 * sizeScale}px "Fira Code"`;
                 ctx.fillText('Parameters:', legendX, currentY);
-                currentY += lineHeight * 1.2;
+                currentY += lineHeight * 1.1;
                 
-                ctx.font = '11px "Fira Code"';
+                ctx.font = `${fontSize}px "Fira Code"`;
                 ctx.fillStyle = 'rgba(255,255,255,0.9)';
                 
                 const params = [
                     `Modulus: m = ${state.modulus}`,
-                    `Euler φ(m) = ${eulerPhi(state.modulus)}`,
                     `Phase: θ = ${state.phase.toFixed(1)}°`,
-                    `Rings: ${state.minRing} – ${state.maxRing}`,
-                    `Ring Count: ${state.maxRing - state.minRing + 1}`,
-                    `Spacing: ${state.ringSpacing.toFixed(2)}`,
+                    `Per-ring: Δθ = ${state.ringRotation.toFixed(0)}°`,
+                    `Rings: [${state.minRing}, ${state.maxRing}]`,
+                    `Spacing: ${state.ringSpacing.toFixed(2)}×`,
                     `Points: ${state.fareyPoints.length}`,
                     `Primes: ${Math.min(state.numPrimes, state.primes.length)}`,
+                    `Max prime: ${state.primes[state.primes.length - 1] || 0}`,
                     `Transform: ${state.transformType}`,
-                    `Color: ${state.nestedColorScheme}`
+                    `Color scheme: ${state.nestedColorScheme}`,
+                    `Connection: ${state.connectionMode}`
                 ];
                 
                 params.forEach(param => {
@@ -7584,30 +7650,54 @@ Generated: ${new Date().toLocaleString()}
                 currentY += sectionGap;
             }
             
-            // Connections section (if requested)
+            // Mathematical Relationships
+            ctx.fillStyle = '#ffd700';
+            ctx.font = `bold ${12 * sizeScale}px "Fira Code"`;
+            ctx.fillText('Theory:', legendX, currentY);
+            currentY += lineHeight * 1.1;
+            
+            ctx.font = `${fontSize}px "Fira Code"`;
+            ctx.fillStyle = 'rgba(255,255,255,0.85)';
+            
+            const theory = [
+                'z ∈ 𝔻: Unit disk |z| < 1',
+                'w = (z-i)/(z+i): Cayley',
+                'w ∈ ℍ: Im(w) > 0',
+                'Farey: gcd(k,n)=1, n|m',
+                'Rotation: e^(iθ) · z'
+            ];
+            
+            theory.forEach(line => {
+                ctx.fillText(line, legendX, currentY);
+                currentY += lineHeight;
+            });
+            
+            currentY += sectionGap;
+            
+            // Connections section
             if (includeConns) {
                 const showRtoR = document.getElementById('toggleShowRtoR') && document.getElementById('toggleShowRtoR').checked;
                 const showRtoR2n = document.getElementById('toggleShowRtoRplus2n') && document.getElementById('toggleShowRtoRplus2n').checked;
                 
                 if (showRtoR || showRtoR2n) {
                     ctx.fillStyle = '#ffd700';
-                    ctx.font = 'bold 13px "Fira Code"';
+                    ctx.font = `bold ${12 * sizeScale}px "Fira Code"`;
                     ctx.fillText('Connections:', legendX, currentY);
-                    currentY += lineHeight * 1.2;
+                    currentY += lineHeight * 1.1;
                     
-                    ctx.font = '11px "Fira Code"';
+                    ctx.font = `${fontSize}px "Fira Code"`;
                     if (showRtoR) {
                         ctx.fillStyle = '#00ffff';
-                        ctx.fillRect(legendX, currentY, 12, 12);
+                        ctx.fillRect(legendX, currentY, colorSize, colorSize);
                         ctx.fillStyle = 'rgba(255,255,255,0.9)';
-                        ctx.fillText('r → r (same)', legendX + 18, currentY);
+                        ctx.fillText('r → r (identity)', legendX + colorSize + 8, currentY);
                         currentY += lineHeight;
                     }
                     if (showRtoR2n) {
                         ctx.fillStyle = 'rgba(255,100,100,0.9)';
-                        ctx.fillRect(legendX, currentY, 12, 12);
+                        ctx.fillRect(legendX, currentY, colorSize, colorSize);
                         ctx.fillStyle = 'rgba(255,255,255,0.9)';
-                        ctx.fillText('r → r+m×2ⁿ', legendX + 18, currentY);
+                        ctx.fillText('r → r+m×2ⁿ (lifting)', legendX + colorSize + 8, currentY);
                         currentY += lineHeight;
                     }
                 }
