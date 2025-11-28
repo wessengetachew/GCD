@@ -1557,7 +1557,7 @@
                             <input type="checkbox" id="applyPresetsToAllCanvas" checked style="width: 16px; height: 16px; cursor: pointer;">
                             <span style="color: var(--text); font-size: 0.9em;">Apply to all canvases (via phase)</span>
                         </label>
-                        <div class="help-text">Enter k/d fraction to align (e.g., 1/2, 2/3, 3/4). Aligns to top (90°)</div>
+                        <div class="help-text">Sets per-ring rotation: k/d × 360° (e.g., 1/2 = 180°, 1/4 = 90°, 2/3 = 240°)</div>
                     </div>
                 </div>
 
@@ -6824,48 +6824,47 @@ Generated: ${new Date().toLocaleString()}
             const k = parseInt(document.getElementById('kdNumerator').value) || 1;
             const d = parseInt(document.getElementById('kdDenominator').value) || 2;
             
-            // Calculate rotation for each ring based on preset
-            const perRingRotations = {};
+            let rotationIncrement;
             
-            for (let m = state.minRing; m <= state.maxRing; m++) {
-                let targetAngle;
-                
-                switch(preset) {
-                    case 'k/d':
-                        // Align k/d point to top (90°)
-                        // For ring m, we want to align the point at position k/d (scaled to m)
-                        // The point k/d is at angle 2π*(k/d)
-                        // We want it at π/2 (90°)
-                        
-                        // Calculate the equivalent position on ring m
-                        // If d divides m, we have exact point k*(m/d)/m
-                        // Otherwise, approximate or skip
-                        const fraction = k / d; // Target fraction (0 to 1)
-                        targetAngle = 90 - (360 * fraction);
-                        break;
-                        
-                    case '0':
-                        // Align n/n=0 point to right (0°)
-                        targetAngle = 0;
-                        break;
-                }
-                
-                perRingRotations[m] = targetAngle;
+            switch(preset) {
+                case 'k/d':
+                    // Calculate rotation as fraction of full circle
+                    // k/d × 360° = degrees per ring
+                    // Example: 1/2 × 360° = 180° per ring
+                    //          1/4 × 360° = 90° per ring
+                    //          2/3 × 360° = 240° per ring
+                    const fraction = k / d;
+                    rotationIncrement = 360 * fraction;
+                    break;
+                    
+                case '0':
+                    // No rotation
+                    rotationIncrement = 0;
+                    break;
             }
             
-            // Apply rotations (store in state for use in rendering)
-            state.perRingRotations = perRingRotations;
+            // Set the per-ring rotation increment (degrees per ring)
+            state.ringRotation = rotationIncrement;
+            
+            // Clear any individual per-ring rotations since we're using global increment
+            state.perRingRotations = null;
+            
+            // Update UI
+            document.getElementById('ringRotationValue').textContent = rotationIncrement.toFixed(0) + '°';
+            document.getElementById('ringRotationValue2').textContent = rotationIncrement.toFixed(0) + '°';
+            document.getElementById('ringRotationSlider').value = rotationIncrement;
+            document.getElementById('ringRotationSlider2').value = rotationIncrement;
+            document.getElementById('ringRotationInput').value = rotationIncrement.toFixed(0);
+            document.getElementById('ringRotationInput2').value = rotationIncrement.toFixed(0);
             
             // If "apply to all canvases" is checked, also set global phase rotation
-            // Use the rotation for the current modulus
-            if (applyToAll && perRingRotations[state.modulus] !== undefined) {
-                const phaseRotation = perRingRotations[state.modulus];
-                state.phase = phaseRotation;
+            if (applyToAll) {
+                state.phase = rotationIncrement;
                 
-                // Update UI
-                document.getElementById('phaseValue').textContent = phaseRotation.toFixed(0) + '°';
-                document.getElementById('phaseSlider').value = phaseRotation;
-                document.getElementById('phaseInput').value = phaseRotation.toFixed(1);
+                // Update phase UI
+                document.getElementById('phaseValue').textContent = rotationIncrement.toFixed(0) + '°';
+                document.getElementById('phaseSlider').value = rotationIncrement;
+                document.getElementById('phaseInput').value = rotationIncrement.toFixed(1);
             }
             
             updateAll();
@@ -7346,8 +7345,12 @@ Generated: ${new Date().toLocaleString()}
                                 <span>Include Watermark (Wessen Getachew)</span>
                             </label>
                             <label class="export-checkbox">
-                                <input type="checkbox" id="includeParameters">
-                                <span>Include Current Parameters Info</span>
+                                <input type="checkbox" id="includeParameters" checked>
+                                <span>Include Parameters in Legend</span>
+                            </label>
+                            <label class="export-checkbox">
+                                <input type="checkbox" id="includeConnections" checked>
+                                <span>Include Global Connections (r→r, r→r+m×2ⁿ)</span>
                             </label>
                         </div>
                         
@@ -7382,8 +7385,7 @@ Generated: ${new Date().toLocaleString()}
                 const includeLegend = document.getElementById('includeLegend').checked;
                 const includeWatermark = document.getElementById('includeWatermark').checked;
                 const includeParameters = document.getElementById('includeParameters').checked;
-
-                console.log('Export started:', canvasSelection, resolution);
+                const includeConnections = document.getElementById('includeConnections').checked;
 
                 // Validate canvases exist
                 if (!canvases.disk || !canvases.cayley || !canvases.nested || !canvases.fullPlane) {
@@ -7403,7 +7405,7 @@ Generated: ${new Date().toLocaleString()}
                 const tempCanvas = document.createElement('canvas');
                 const tempCtx = tempCanvas.getContext('2d');
                 const baseSize = Math.min(width, height);
-                const legendSpace = includeLegend ? 250 : 0;
+                const legendSpace = includeLegend ? 300 : 0; // Wider legend space
 
                 if (canvasSelection === 'all') {
                     // Export all four canvases in 2x2 grid
@@ -7439,7 +7441,7 @@ Generated: ${new Date().toLocaleString()}
                     });
 
                     if (includeLegend) {
-                        drawSimpleLegend(tempCtx, tempCanvas.width, tempCanvas.height, baseSize);
+                        drawCompleteLegend(tempCtx, tempCanvas.width, tempCanvas.height, baseSize, 'all', includeParameters, includeConnections);
                     }
                 } else {
                     // Export single canvas
@@ -7484,11 +7486,7 @@ Generated: ${new Date().toLocaleString()}
                     }
 
                     if (includeLegend) {
-                        drawSimpleLegend(tempCtx, tempCanvas.width, tempCanvas.height, baseSize);
-                    }
-                    
-                    if (includeParameters) {
-                        drawSimpleParameters(tempCtx, baseSize);
+                        drawCompleteLegend(tempCtx, tempCanvas.width, tempCanvas.height, baseSize, canvasSelection, includeParameters, includeConnections);
                     }
                 }
 
@@ -7508,55 +7506,112 @@ Generated: ${new Date().toLocaleString()}
             }
         }
 
-        // Simple legend that always works
-        function drawSimpleLegend(ctx, totalWidth, totalHeight, baseSize) {
-            const legendX = baseSize + 10;
-            const legendY = 40;
-            const lineHeight = 25;
+        // Complete legend with all info in right panel
+        function drawCompleteLegend(ctx, totalWidth, totalHeight, baseSize, canvasType, includeParams, includeConns) {
+            const legendX = baseSize + 20;
+            const legendWidth = 260;
+            let currentY = 40;
+            const lineHeight = 20;
+            const sectionGap = 10;
             
+            // Legend background
+            ctx.fillStyle = 'rgba(10, 14, 39, 0.95)';
+            ctx.fillRect(baseSize, 0, totalWidth - baseSize, totalHeight);
+            ctx.strokeStyle = 'rgba(255, 215, 0, 0.3)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(baseSize, 0, totalWidth - baseSize, totalHeight);
+            
+            // Title
             ctx.fillStyle = '#ffd700';
-            ctx.font = 'bold 14px "Fira Code"';
+            ctx.font = 'bold 16px "Fira Code"';
             ctx.textAlign = 'left';
             ctx.textBaseline = 'top';
+            ctx.fillText('Legend', legendX, currentY);
+            currentY += lineHeight * 1.5 + sectionGap;
             
-            let y = legendY;
-            ctx.fillText('Parameters:', legendX, y);
-            y += lineHeight * 1.5;
-            
-            ctx.font = '12px "Fira Code"';
-            ctx.fillStyle = 'rgba(255,255,255,0.9)';
-            ctx.fillText(`m = ${state.modulus}`, legendX, y); y += lineHeight;
-            ctx.fillText(`θ = ${state.phase.toFixed(0)}°`, legendX, y); y += lineHeight;
-            ctx.fillText(`Rings: ${state.minRing}-${state.maxRing}`, legendX, y); y += lineHeight;
-            ctx.fillText(`Points: ${state.fareyPoints.length}`, legendX, y); y += lineHeight;
-        }
-
-        // Simple parameters display
-        function drawSimpleParameters(ctx, baseSize) {
-            const padding = 20;
-            const boxX = padding;
-            const boxY = baseSize - 120;
-            const lineHeight = 18;
-            
-            ctx.fillStyle = 'rgba(10,14,39,0.9)';
-            ctx.fillRect(boxX, boxY, 250, 100);
-            ctx.strokeStyle = 'rgba(255,215,0,0.5)';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(boxX, boxY, 250, 100);
-            
-            ctx.fillStyle = '#ffd700';
-            ctx.font = 'bold 12px "Fira Code"';
-            ctx.textAlign = 'left';
-            ctx.textBaseline = 'top';
-            
-            let y = boxY + 10;
-            ctx.fillText('Current State:', boxX + 10, y); y += lineHeight * 1.2;
+            // Color scheme
+            ctx.font = 'bold 13px "Fira Code"';
+            ctx.fillText('Color Coding:', legendX, currentY);
+            currentY += lineHeight * 1.2;
             
             ctx.font = '11px "Fira Code"';
-            ctx.fillStyle = 'rgba(255,255,255,0.9)';
-            ctx.fillText(`Modulus: ${state.modulus}`, boxX + 10, y); y += lineHeight;
-            ctx.fillText(`Phase: ${state.phase.toFixed(1)}°`, boxX + 10, y); y += lineHeight;
-            ctx.fillText(`Rings: ${state.minRing}–${state.maxRing}`, boxX + 10, y); y += lineHeight;
+            const colors = [
+                { color: CONFIG.colors.farey, text: 'GCD=1 (Coprime)' },
+                { color: '#e74c3c', text: 'GCD=m (Divisible)' },
+                { color: '#00ffff', text: 'GCD=2' },
+                { color: '#9b59b6', text: 'GCD=3' },
+                { color: CONFIG.colors.prime, text: 'Prime Numbers' }
+            ];
+            
+            colors.forEach(item => {
+                ctx.fillStyle = item.color;
+                ctx.fillRect(legendX, currentY, 12, 12);
+                ctx.fillStyle = 'rgba(255,255,255,0.9)';
+                ctx.fillText(item.text, legendX + 18, currentY);
+                currentY += lineHeight;
+            });
+            
+            currentY += sectionGap;
+            
+            // Parameters section (if requested)
+            if (includeParams) {
+                ctx.fillStyle = '#ffd700';
+                ctx.font = 'bold 13px "Fira Code"';
+                ctx.fillText('Parameters:', legendX, currentY);
+                currentY += lineHeight * 1.2;
+                
+                ctx.font = '11px "Fira Code"';
+                ctx.fillStyle = 'rgba(255,255,255,0.9)';
+                
+                const params = [
+                    `Modulus: m = ${state.modulus}`,
+                    `Euler φ(m) = ${eulerPhi(state.modulus)}`,
+                    `Phase: θ = ${state.phase.toFixed(1)}°`,
+                    `Rings: ${state.minRing} – ${state.maxRing}`,
+                    `Ring Count: ${state.maxRing - state.minRing + 1}`,
+                    `Spacing: ${state.ringSpacing.toFixed(2)}`,
+                    `Points: ${state.fareyPoints.length}`,
+                    `Primes: ${Math.min(state.numPrimes, state.primes.length)}`,
+                    `Transform: ${state.transformType}`,
+                    `Color: ${state.nestedColorScheme}`
+                ];
+                
+                params.forEach(param => {
+                    ctx.fillText(param, legendX, currentY);
+                    currentY += lineHeight;
+                });
+                
+                currentY += sectionGap;
+            }
+            
+            // Connections section (if requested)
+            if (includeConns) {
+                const showRtoR = document.getElementById('toggleShowRtoR') && document.getElementById('toggleShowRtoR').checked;
+                const showRtoR2n = document.getElementById('toggleShowRtoRplus2n') && document.getElementById('toggleShowRtoRplus2n').checked;
+                
+                if (showRtoR || showRtoR2n) {
+                    ctx.fillStyle = '#ffd700';
+                    ctx.font = 'bold 13px "Fira Code"';
+                    ctx.fillText('Connections:', legendX, currentY);
+                    currentY += lineHeight * 1.2;
+                    
+                    ctx.font = '11px "Fira Code"';
+                    if (showRtoR) {
+                        ctx.fillStyle = '#00ffff';
+                        ctx.fillRect(legendX, currentY, 12, 12);
+                        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+                        ctx.fillText('r → r (same)', legendX + 18, currentY);
+                        currentY += lineHeight;
+                    }
+                    if (showRtoR2n) {
+                        ctx.fillStyle = 'rgba(255,100,100,0.9)';
+                        ctx.fillRect(legendX, currentY, 12, 12);
+                        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+                        ctx.fillText('r → r+m×2ⁿ', legendX + 18, currentY);
+                        currentY += lineHeight;
+                    }
+                }
+            }
         }
 
         function drawParametersInfo(ctx, width, height, canvasType) {
