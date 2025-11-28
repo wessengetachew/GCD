@@ -7420,7 +7420,7 @@ Generated: ${new Date().toLocaleString()}
                     // For all four canvases, use 2x2 grid with square aspect ratio
                     // Extend width to accommodate legend on the right
                     const baseSize = Math.min(width, height);
-                    const legendSpace = 250; // Extra space for legend
+                    const legendSpace = includeLegend ? 250 : 0; // Only add space if legend requested
                     tempCanvas.width = baseSize + legendSpace;
                     tempCanvas.height = baseSize;
                     
@@ -7439,36 +7439,31 @@ Generated: ${new Date().toLocaleString()}
                     
                     sourceCanvases.forEach((item) => {
                         console.log('Drawing canvas:', item.title, item.canvas);
+                        
+                        if (!item.canvas) {
+                            console.error('Canvas not found:', item.title);
+                            return;
+                        }
+                        
                         // Draw canvas (each is square)
                         tempCtx.drawImage(item.canvas, 
                             0, 0, item.canvas.width, item.canvas.height,
                             item.x, item.y, canvasSize, canvasSize);
                         
-                        // Draw title for each canvas - yellow only, positioned higher
-                        const scale = baseSize / 1920;
-                        const fontSize = 18 * scale;
-                        const titleY = item.y + 20 * scale;
-                        const titleX = item.x + canvasSize / 2;
-                        
-                        tempCtx.fillStyle = '#ffd700';  // Yellow only
-                        tempCtx.font = `bold ${fontSize}px "Fira Code"`;
-                        tempCtx.textAlign = 'center';
-                        tempCtx.textBaseline = 'top';
-                        tempCtx.shadowBlur = 8 * scale;
-                        tempCtx.shadowColor = 'rgba(255, 215, 0, 0.4)';
-                        tempCtx.fillText(item.title, titleX, titleY);
-                        tempCtx.shadowBlur = 0;
+                        // Don't add titles - each canvas already has its own title from live view
+                        // This prevents double titles
                     });
 
                     if (includeLegend) {
                         // Draw legend on the right side in the extended space
+                        // For "all" we'll show a combined legend
                         drawLegendRight(tempCtx, tempCanvas.width, tempCanvas.height, baseSize, 'all');
                     }
                 } else {
                     console.log('Exporting single canvas:', canvasSelection);
                     // For single canvas, extend width for legend on the right
                     const baseSize = Math.min(width, height);
-                    const legendSpace = 250; // Extra space for legend
+                    const legendSpace = includeLegend ? 250 : 0; // Only add space if legend requested
                     tempCanvas.width = baseSize + legendSpace;
                     tempCanvas.height = baseSize;
 
@@ -7499,22 +7494,15 @@ Generated: ${new Date().toLocaleString()}
 
                     console.log('Source canvas:', sourceCanvas, 'Title:', title);
 
+                    if (!sourceCanvas) {
+                        throw new Error(`Canvas ${canvasSelection} not found!`);
+                    }
+
                     // Draw canvas on the left (square)
                     tempCtx.drawImage(sourceCanvas, 0, 0, baseSize, baseSize);
 
-                    // Add title at top center of canvas area
-                    const titleScale = baseSize / 1000;
-                    const titleFontSize = 28 * titleScale;
-                    const titlePadding = 30 * titleScale;
-                    
-                    tempCtx.fillStyle = '#ffd700';
-                    tempCtx.font = `bold ${titleFontSize}px "Fira Code"`;
-                    tempCtx.textAlign = 'center';
-                    tempCtx.textBaseline = 'top';
-                    tempCtx.shadowBlur = 12 * titleScale;
-                    tempCtx.shadowColor = 'rgba(255, 215, 0, 0.5)';
-                    tempCtx.fillText(title, baseSize / 2, titlePadding);
-                    tempCtx.shadowBlur = 0;
+                    // Don't add title - the canvas already has it from the live view
+                    // This prevents double titles
 
                     if (includeLegend) {
                         // Use right-side legend for individual canvas too
