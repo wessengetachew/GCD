@@ -1767,9 +1767,9 @@
                     <div class="control-item" data-tooltip="Ending modulus for the outermost ring. No limit - try 50+ for impressive patterns!">
                         <div class="control-label">
                             <span>Max Ring (m_end)</span>
-                            <span class="control-value" id="maxRingDisplay">12</span>
+                            <span class="control-value" id="maxRingDisplay">101</span>
                         </div>
-                        <input type="number" id="maxRingInput" value="12" min="1" step="1">
+                        <input type="number" id="maxRingInput" value="101" min="1" step="1">
                         <div class="help-text">Unlimited - 100+ rings possible</div>
                     </div>
 
@@ -2336,7 +2336,7 @@
             primeLimit: 10000,
             animSpeed: 1.0,
             minRing: 1,
-            maxRing: 12,
+            maxRing: 101,
             ringSpacing: 1.0,
             ringRotation: 0,
             connectionMode: 'none',
@@ -7136,7 +7136,7 @@ Generated: ${new Date().toLocaleString()}
                 primeLimit: 10000,
                 animSpeed: 1.0,
                 minRing: 1,
-                maxRing: 12,
+                maxRing: 101,
                 ringSpacing: 1.0,
                 connectionMode: 'none',
                 connectionThickness: 1.0,
@@ -7184,7 +7184,7 @@ Generated: ${new Date().toLocaleString()}
             document.getElementById('primeLimitInput').value = 10000;
             document.getElementById('speedSlider').value = 1;
             document.getElementById('minRingInput').value = 1;
-            document.getElementById('maxRingInput').value = 12;
+            document.getElementById('maxRingInput').value = 101;
             document.getElementById('spacingSlider').value = 1;
             document.getElementById('ringRotationSlider').value = 0;
             document.getElementById('ringRotationInput').value = 0;
@@ -7233,7 +7233,7 @@ Generated: ${new Date().toLocaleString()}
             document.getElementById('primeLimitDisplay').textContent = '10000';
             document.getElementById('speedValue').textContent = '1.0×';
             document.getElementById('minRingDisplay').textContent = '1';
-            document.getElementById('maxRingDisplay').textContent = '12';
+            document.getElementById('maxRingDisplay').textContent = '101';
             document.getElementById('spacingValue').textContent = '1.0';
             document.getElementById('ringRotationValue').textContent = '0°';
             document.getElementById('cayleyHRangeValue').textContent = '6.0';
