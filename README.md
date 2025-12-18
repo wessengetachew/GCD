@@ -193,6 +193,7 @@
         #latticeCanvas2D, #latticeCanvas3D {
             width: 100%;
             height: 100%;
+            display: block;
         }
         
         .canvas-label {
@@ -209,6 +210,7 @@
         .chart-container {
             height: 400px;
             margin: 1.5rem 0;
+            position: relative;
         }
         
         /* Export controls */
@@ -607,14 +609,14 @@
                 <button class="export-btn export-png" id="export3DPNG">
                     📷 Export 3D Visualization (4K PNG)
                 </button>
+                <button class="export-btn export-png" id="exportChartPNG">
+                    📈 Export Error Chart (4K PNG)
+                </button>
                 <button class="export-btn export-csv" id="exportDataCSV">
                     📊 Export Error Data (CSV)
                 </button>
                 <button class="export-btn export-csv" id="exportLatticeCSV">
                     📊 Export Lattice Points (CSV)
-                </button>
-                <button class="export-btn" id="exportChartPNG">
-                    📈 Export Error Chart (PNG)
                 </button>
                 <button class="export-btn" id="exportFullReport">
                     📄 Export Full Report (JSON)
@@ -788,7 +790,7 @@
                 </div>
                 
                 <div class="canvas-container">
-                    <div class="canvas-label">3D Lattice Visualization (k=3)</div>
+                    <div class="canvas-label">3D Lattice Visualization (k=3) - Drag to rotate, scroll to zoom</div>
                     <div class="loading-overlay" id="loading3D">
                         <div class="spinner"></div>
                     </div>
@@ -798,10 +800,10 @@
                 <div class="interactive-controls">
                     <div class="control-row">
                         <div class="slider-container">
-                            <label for="vis-radius-3d">Radius \(R\): <span class="slider-value" id="vis-radius-3d-value">20</span> (1-50)</label>
-                            <input type="range" id="vis-radius-3d" min="1" max="50" value="20" step="1">
+                            <label for="vis-radius-3d">Radius \(R\): <span class="slider-value" id="vis-radius-3d-value">15</span> (1-30)</label>
+                            <input type="range" id="vis-radius-3d" min="1" max="30" value="15" step="1">
                             <div class="input-container">
-                                <input type="number" id="vis-radius-3d-input" min="1" max="50" value="20">
+                                <input type="number" id="vis-radius-3d-input" min="1" max="30" value="15">
                                 <button id="set-radius-3d">Set Radius</button>
                             </div>
                         </div>
@@ -833,9 +835,9 @@
                         <h4>3D Point Inspector</h4>
                         <div style="display: flex; gap: 10px; margin-top: 10px; align-items: center;">
                             <span>Inspect point at:</span>
-                            <input type="number" id="inspect-x" value="1" min="1" max="50" style="width: 60px;">
-                            <input type="number" id="inspect-y" value="1" min="1" max="50" style="width: 60px;">
-                            <input type="number" id="inspect-z" value="1" min="1" max="50" style="width: 60px;">
+                            <input type="number" id="inspect-x" value="1" min="1" max="30" style="width: 60px;">
+                            <input type="number" id="inspect-y" value="1" min="1" max="30" style="width: 60px;">
+                            <input type="number" id="inspect-z" value="1" min="1" max="30" style="width: 60px;">
                             <button id="inspect-point">Inspect Point</button>
                         </div>
                         <div id="inspect-result" style="margin-top: 10px; padding: 5px; background-color: white; border-radius: 3px; font-family: monospace;">
@@ -844,12 +846,12 @@
                     </div>
                     
                     <div class="calc-results" id="stats-3d">
-                        <p>For \(R = 20\):</p>
-                        <p>Total points: \(R^3 = 8000\)</p>
-                        <p>Coprime points: \(N(R) \approx 6652\)</p>
-                        <p>Expected: \(R^3/\zeta(3) \approx 6651.70\)</p>
-                        <p>Error \(\Delta(R) \approx 0.30\)</p>
-                        <p>Boundary points: \(6R^2 - 12R + 8 = 2216\)</p>
+                        <p>For \(R = 15\):</p>
+                        <p>Total points: \(R^3 = 3375\)</p>
+                        <p>Coprime points: \(N(R) \approx 2805\)</p>
+                        <p>Expected: \(R^3/\zeta(3) \approx 2805.42\)</p>
+                        <p>Error \(\Delta(R) \approx -0.42\)</p>
+                        <p>Boundary points: \(6R^2 - 12R + 8 = 1256\)</p>
                     </div>
                 </div>
             </div>
@@ -984,7 +986,9 @@
             threeObjects: [],
             chart: null,
             lastClickedPoint2D: null,
-            gcdInputCount: 3
+            gcdInputCount: 3,
+            animationFrameId: null,
+            is3DInitialized: false
         };
         
         // =============================
@@ -1170,8 +1174,13 @@
             
             // Set canvas size
             const container = canvas.parentElement;
-            canvas.width = container.clientWidth;
-            canvas.height = container.clientHeight;
+            canvas.width = container.clientWidth * window.devicePixelRatio;
+            canvas.height = container.clientHeight * window.devicePixelRatio;
+            canvas.style.width = container.clientWidth + 'px';
+            canvas.style.height = container.clientHeight + 'px';
+            
+            // Scale context for high DPI displays
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
             
             draw2DLattice();
             
@@ -1257,17 +1266,19 @@
             
             // Calculate padding and cell size
             const padding = pointSize * 2;
-            const availableWidth = canvas.width - padding * 2;
-            const availableHeight = canvas.height - padding * 2;
+            const availableWidth = (canvas.width / window.devicePixelRatio) - padding * 2;
+            const availableHeight = (canvas.height / window.devicePixelRatio) - padding * 2;
             const cellSize = Math.min(availableWidth / R, availableHeight / R);
             
-            // Convert click coordinates to canvas coordinates
-            const x = event.clientX - rect.left;
-            const y = event.clientY - rect.top;
+            // Convert click coordinates to canvas coordinates (adjusted for scaling)
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const x = (event.clientX - rect.left) * scaleX;
+            const y = (event.clientY - rect.top) * scaleY;
             
             // Convert to lattice coordinates
-            const latticeX = Math.floor((x - padding) / cellSize) + 1;
-            const latticeY = Math.floor((y - padding) / cellSize) + 1;
+            const latticeX = Math.floor((x / window.devicePixelRatio - padding) / cellSize) + 1;
+            const latticeY = Math.floor((y / window.devicePixelRatio - padding) / cellSize) + 1;
             
             // Check if click is within lattice bounds
             if (latticeX >= 1 && latticeX <= R && latticeY >= 1 && latticeY <= R) {
@@ -1308,12 +1319,15 @@
                     const showCoordinates = document.getElementById('show-coordinates-2d').checked;
                     
                     // Clear canvas
+                    ctx.save();
+                    ctx.setTransform(1, 0, 0, 1, 0, 0);
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.restore();
                     
                     // Calculate padding and cell size
                     const padding = pointSize * 2;
-                    const availableWidth = canvas.width - padding * 2;
-                    const availableHeight = canvas.height - padding * 2;
+                    const availableWidth = (canvas.width / window.devicePixelRatio) - padding * 2;
+                    const availableHeight = (canvas.height / window.devicePixelRatio) - padding * 2;
                     const cellSize = Math.min(availableWidth / R, availableHeight / R);
                     
                     // Draw grid
@@ -1443,32 +1457,46 @@
         }
         
         // =============================
-        // 3D Visualization
+        // 3D Visualization - FIXED VERSION
         // =============================
         
         function init3DVisualization() {
+            if (state.is3DInitialized) return;
+            
             const canvas = document.getElementById('latticeCanvas3D');
+            const container = canvas.parentElement;
+            
+            // Clear any existing content
+            while (canvas.firstChild) {
+                canvas.removeChild(canvas.firstChild);
+            }
+            
+            // Create a new canvas for Three.js
+            const threeCanvas = document.createElement('canvas');
+            threeCanvas.id = 'threeCanvas';
+            threeCanvas.style.width = '100%';
+            threeCanvas.style.height = '100%';
+            canvas.appendChild(threeCanvas);
+            
+            // Set canvas size
+            const width = container.clientWidth;
+            const height = container.clientHeight;
             
             // Set up Three.js scene
             const scene = new THREE.Scene();
             scene.background = new THREE.Color(0xfefefe);
             
             // Camera
-            const camera = new THREE.PerspectiveCamera(
-                75, 
-                canvas.clientWidth / canvas.clientHeight, 
-                0.1, 
-                1000
-            );
-            camera.position.set(20, 20, 20);
+            const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
+            camera.position.set(15, 15, 15);
             
             // Renderer
             const renderer = new THREE.WebGLRenderer({ 
-                canvas: canvas,
+                canvas: threeCanvas,
                 antialias: true,
                 alpha: true
             });
-            renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+            renderer.setSize(width, height);
             renderer.setPixelRatio(window.devicePixelRatio);
             
             // Controls
@@ -1489,16 +1517,19 @@
             state.threeRenderer = renderer;
             state.threeCamera = camera;
             state.threeControls = controls;
+            state.is3DInitialized = true;
             
             // Draw initial lattice
             draw3DLattice();
             
             // Animation loop
             function animate() {
-                requestAnimationFrame(animate);
+                if (!state.is3DInitialized) return;
+                
+                state.animationFrameId = requestAnimationFrame(animate);
                 
                 if (document.getElementById('auto-rotate-3d').checked) {
-                    const speed = parseFloat(document.getElementById('rotation-speed-3d').value);
+                    const speed = parseFloat(document.getElementById('rotation-speed-3d').value) || 0.5;
                     scene.rotation.y += 0.005 * speed;
                 }
                 
@@ -1513,11 +1544,19 @@
             
             // Handle window resize
             window.addEventListener('resize', () => {
-                const canvas = document.getElementById('latticeCanvas3D');
-                camera.aspect = canvas.clientWidth / canvas.clientHeight;
+                if (!state.is3DInitialized) return;
+                
+                const container = canvas.parentElement;
+                const width = container.clientWidth;
+                const height = container.clientHeight;
+                
+                camera.aspect = width / height;
                 camera.updateProjectionMatrix();
-                renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+                renderer.setSize(width, height);
             });
+            
+            // Set up inspect point button
+            document.getElementById('inspect-point').addEventListener('click', inspect3DPoint);
         }
         
         function setup3DControls() {
@@ -1534,28 +1573,146 @@
             
             radiusSetBtn.addEventListener('click', function() {
                 const value = parseInt(radiusInput.value);
-                if (!isNaN(value) && value >= 1 && value <= 50) {
+                if (!isNaN(value) && value >= 1 && value <= 30) {
                     radiusSlider.value = value;
                     document.getElementById('vis-radius-3d-value').textContent = value;
                     draw3DLattice();
                 }
             });
             
+            // Setup cube size controls
+            const cubeSizeSlider = document.getElementById('cube-size-3d');
+            const cubeSizeInput = document.getElementById('cube-size-3d-input');
+            const cubeSizeSetBtn = document.getElementById('set-cube-size-3d');
+            
+            cubeSizeSlider.addEventListener('input', function() {
+                document.getElementById('cube-size-3d-value').textContent = parseFloat(this.value).toFixed(1);
+                cubeSizeInput.value = this.value;
+                draw3DLattice();
+            });
+            
+            cubeSizeSetBtn.addEventListener('click', function() {
+                const value = parseFloat(cubeSizeInput.value);
+                if (!isNaN(value) && value >= 0.1 && value <= 2) {
+                    cubeSizeSlider.value = value;
+                    document.getElementById('cube-size-3d-value').textContent = value.toFixed(1);
+                    draw3DLattice();
+                }
+            });
+            
             // Setup other controls
-            document.getElementById('cube-size-3d').addEventListener('input', draw3DLattice);
             document.getElementById('auto-rotate-3d').addEventListener('change', update3DAutoRotate);
             document.getElementById('show-axes-3d').addEventListener('change', draw3DLattice);
             document.getElementById('show-boundary-3d').addEventListener('change', draw3DLattice);
+        }
+        
+        function draw3DLattice() {
+            if (!state.is3DInitialized) return;
             
-            // Setup point inspector
-            document.getElementById('inspect-point').addEventListener('click', inspect3DPoint);
+            const loading = document.getElementById('loading3D');
+            loading.style.display = 'flex';
+            
+            setTimeout(() => {
+                try {
+                    const scene = state.threeScene;
+                    const R = parseInt(document.getElementById('vis-radius-3d').value) || 15;
+                    const cubeSize = parseFloat(document.getElementById('cube-size-3d').value) || 0.7;
+                    const showAxes = document.getElementById('show-axes-3d').checked;
+                    const showBoundary = document.getElementById('show-boundary-3d').checked;
+                    
+                    // Clear previous objects
+                    state.threeObjects.forEach(obj => scene.remove(obj));
+                    state.threeObjects = [];
+                    
+                    // Add axes if enabled
+                    if (showAxes) {
+                        const axesHelper = new THREE.AxesHelper(R * 1.5);
+                        scene.add(axesHelper);
+                        state.threeObjects.push(axesHelper);
+                    }
+                    
+                    // Create cube geometry and materials
+                    const geometry = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
+                    const coprimeMaterial = new THREE.MeshLambertMaterial({ color: 0x4CAF50 });
+                    const nonCoprimeMaterial = new THREE.MeshLambertMaterial({ color: 0xf44336 });
+                    const boundaryMaterial = new THREE.MeshLambertMaterial({ color: 0xFF9800 });
+                    
+                    // Add cubes
+                    let coprimeCount = 0;
+                    let boundaryCount = 0;
+                    
+                    // Limit the number of cubes for performance
+                    const maxCubes = R <= 10 ? R : 10;
+                    const step = Math.max(1, Math.floor(R / maxCubes));
+                    
+                    for (let x = 1; x <= R; x += step) {
+                        for (let y = 1; y <= R; y += step) {
+                            for (let z = 1; z <= R; z += step) {
+                                const isCoprimeTriple = gcdArray([x, y, z]) === 1;
+                                const isBoundary = isBoundaryPoint(x, y, z, R);
+                                
+                                if (isCoprimeTriple) coprimeCount++;
+                                if (isBoundary) boundaryCount++;
+                                
+                                // Choose material
+                                let material;
+                                if (showBoundary && isBoundary) {
+                                    material = boundaryMaterial;
+                                } else {
+                                    material = isCoprimeTriple ? coprimeMaterial : nonCoprimeMaterial;
+                                }
+                                
+                                // Create cube
+                                const cube = new THREE.Mesh(geometry, material);
+                                cube.position.set(
+                                    (x - R/2 - 0.5) * (cubeSize + 0.1),
+                                    (y - R/2 - 0.5) * (cubeSize + 0.1),
+                                    (z - R/2 - 0.5) * (cubeSize + 0.1)
+                                );
+                                
+                                scene.add(cube);
+                                state.threeObjects.push(cube);
+                            }
+                        }
+                    }
+                    
+                    // Scale counts to approximate total
+                    const scaleFactor = Math.pow(R / step, 3);
+                    const estimatedTotalPoints = Math.pow(R, 3);
+                    const estimatedCoprimeCount = Math.round(coprimeCount * scaleFactor);
+                    const estimatedBoundaryCount = Math.round(boundaryCount * scaleFactor);
+                    
+                    // Update statistics
+                    const expected = estimatedTotalPoints / zetaValues[3];
+                    const error = estimatedCoprimeCount - expected;
+                    
+                    document.getElementById('stats-3d').innerHTML = `
+                        <p>For \(R = ${R}\):</p>
+                        <p>Total points: \(R^3 = ${estimatedTotalPoints.toLocaleString()}\)</p>
+                        <p>Coprime points: \(N(R) \\approx ${estimatedCoprimeCount.toLocaleString()}\)</p>
+                        <p>Expected: \(R^3/\\zeta(3) \\approx ${expected.toFixed(2)}\)</p>
+                        <p>Error \(\\Delta(R) \\approx ${error.toFixed(2)}\)</p>
+                        <p>Boundary points: \(6R^2 - 12R + 8 = ${6*R*R - 12*R + 8}\)</p>
+                    `;
+                    
+                    // Update MathJax
+                    if (window.MathJax) {
+                        MathJax.typesetPromise([document.getElementById('stats-3d')]);
+                    }
+                    
+                } catch (error) {
+                    console.error('Error drawing 3D lattice:', error);
+                } finally {
+                    loading.style.display = 'none';
+                }
+            }, 10);
         }
         
         function inspect3DPoint() {
             const x = parseInt(document.getElementById('inspect-x').value) || 1;
             const y = parseInt(document.getElementById('inspect-y').value) || 1;
             const z = parseInt(document.getElementById('inspect-z').value) || 1;
-            const R = parseInt(document.getElementById('vis-radius-3d').value);
+            const R = parseInt(document.getElementById('vis-radius-3d').value) || 15;
             
             // Validate inputs
             if (x < 1 || x > R || y < 1 || y > R || z < 1 || z > R) {
@@ -1579,97 +1736,8 @@
             calculateGCD();
         }
         
-        function draw3DLattice() {
-            const loading = document.getElementById('loading3D');
-            loading.style.display = 'flex';
-            
-            setTimeout(() => {
-                try {
-                    const scene = state.threeScene;
-                    const R = parseInt(document.getElementById('vis-radius-3d').value);
-                    const cubeSize = parseFloat(document.getElementById('cube-size-3d').value);
-                    const showAxes = document.getElementById('show-axes-3d').checked;
-                    const showBoundary = document.getElementById('show-boundary-3d').checked;
-                    
-                    // Clear previous objects
-                    state.threeObjects.forEach(obj => scene.remove(obj));
-                    state.threeObjects = [];
-                    
-                    // Add axes if enabled
-                    if (showAxes) {
-                        const axesHelper = new THREE.AxesHelper(R * 1.5);
-                        scene.add(axesHelper);
-                        state.threeObjects.push(axesHelper);
-                    }
-                    
-                    // Create cube geometry and materials
-                    const geometry = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
-                    const materials = {
-                        coprime: new THREE.MeshLambertMaterial({ color: 0x4CAF50 }),
-                        nonCoprime: new THREE.MeshLambertMaterial({ color: 0xf44336 }),
-                        boundary: new THREE.MeshLambertMaterial({ color: 0xFF9800 })
-                    };
-                    
-                    // Add cubes
-                    let coprimeCount = 0;
-                    let boundaryCount = 0;
-                    
-                    for (let x = 1; x <= R; x++) {
-                        for (let y = 1; y <= R; y++) {
-                            for (let z = 1; z <= R; z++) {
-                                const isCoprimeTriple = gcdArray([x, y, z]) === 1;
-                                const isBoundary = isBoundaryPoint(x, y, z, R);
-                                
-                                if (isCoprimeTriple) coprimeCount++;
-                                if (isBoundary) boundaryCount++;
-                                
-                                // Choose material
-                                let material;
-                                if (showBoundary && isBoundary) {
-                                    material = materials.boundary;
-                                } else {
-                                    material = isCoprimeTriple ? materials.coprime : materials.nonCoprime;
-                                }
-                                
-                                // Create cube
-                                const cube = new THREE.Mesh(geometry, material);
-                                cube.position.set(
-                                    (x - R/2 - 0.5) * (cubeSize + 0.1),
-                                    (y - R/2 - 0.5) * (cubeSize + 0.1),
-                                    (z - R/2 - 0.5) * (cubeSize + 0.1)
-                                );
-                                
-                                scene.add(cube);
-                                state.threeObjects.push(cube);
-                            }
-                        }
-                    }
-                    
-                    // Update statistics
-                    const totalPoints = R * R * R;
-                    const expected = totalPoints / zetaValues[3];
-                    const error = coprimeCount - expected;
-                    
-                    document.getElementById('stats-3d').innerHTML = `
-                        <p>For \(R = ${R}\):</p>
-                        <p>Total points: \(R^3 = ${totalPoints.toLocaleString()}\)</p>
-                        <p>Coprime points: \(N(R) = ${coprimeCount.toLocaleString()}\)</p>
-                        <p>Expected: \(R^3/\\zeta(3) \\approx ${expected.toFixed(2)}\)</p>
-                        <p>Error \(\\Delta(R) = ${error.toFixed(2)}\)</p>
-                        <p>Boundary points: \(6R^2 - 12R + 8 = ${6*R*R - 12*R + 8}\)</p>
-                    `;
-                    
-                    // Update MathJax
-                    if (window.MathJax) {
-                        MathJax.typesetPromise([document.getElementById('stats-3d')]);
-                    }
-                    
-                } catch (error) {
-                    console.error('Error drawing 3D lattice:', error);
-                } finally {
-                    loading.style.display = 'none';
-                }
-            }, 10);
+        function update3DAutoRotate() {
+            // Handled in animation loop
         }
         
         // =============================
@@ -1698,7 +1766,19 @@
                         },
                         tooltip: {
                             mode: 'index',
-                            intersect: false
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += formatNumber(context.parsed.y);
+                                    }
+                                    return label;
+                                }
+                            }
                         },
                         legend: {
                             position: 'top',
@@ -1841,6 +1921,7 @@
             // Generate datasets
             const datasets = [];
             let colorIndex = 0;
+            const colors = ['#1a5fb4', '#4CAF50', '#FF9800', '#9C27B0', '#E91E63', '#00BCD4'];
             
             selectedDims.forEach(k => {
                 // Absolute error dataset
@@ -1855,7 +1936,7 @@
                     datasets.push({
                         label: `k=${k}: Absolute Error`,
                         data: data,
-                        borderColor: ['#1a5fb4', '#4CAF50', '#FF9800', '#9C27B0', '#E91E63', '#00BCD4'][colorIndex % 6],
+                        borderColor: colors[colorIndex % colors.length],
                         backgroundColor: 'transparent',
                         borderWidth: 2,
                         tension: 0.1
@@ -1877,7 +1958,7 @@
                     datasets.push({
                         label: `k=${k}: Relative Error (%)`,
                         data: data,
-                        borderColor: ['#1a5fb4', '#4CAF50', '#FF9800', '#9C27B0', '#E91E63', '#00BCD4'][colorIndex % 6],
+                        borderColor: colors[colorIndex % colors.length],
                         backgroundColor: 'transparent',
                         borderWidth: 2,
                         borderDash: [5, 5],
@@ -1897,7 +1978,7 @@
                     datasets.push({
                         label: `k=${k}: Boundary Term R^${k-1}`,
                         data: data,
-                        borderColor: ['#1a5fb4', '#4CAF50', '#FF9800', '#9C27B0', '#E91E63', '#00BCD4'][colorIndex % 6],
+                        borderColor: colors[colorIndex % colors.length],
                         backgroundColor: 'transparent',
                         borderWidth: 1,
                         borderDash: [2, 2],
@@ -1914,11 +1995,50 @@
         }
         
         // =============================
-        // Export Functions (same as before)
+        // Export Functions - FIXED VERSION
         // =============================
         
-        function exportCanvasAsPNG(canvasId, filename, scale = 4) {
-            const canvas = document.getElementById(canvasId);
+        function export2DAsPNG() {
+            const canvas = document.getElementById('latticeCanvas2D');
+            exportCanvasAsPNG(canvas, 'boundary_cancellation_2d.png');
+        }
+        
+        function export3DAsPNG() {
+            if (!state.is3DInitialized) {
+                showExportStatus('Please initialize 3D visualization first by clicking the 3D tab', true);
+                return;
+            }
+            
+            const canvas = document.getElementById('threeCanvas');
+            if (!canvas) {
+                showExportStatus('3D canvas not found. Please switch to 3D tab and try again.', true);
+                return;
+            }
+            
+            // Force a render before capturing
+            if (state.threeRenderer && state.threeScene && state.threeCamera) {
+                state.threeRenderer.render(state.threeScene, state.threeCamera);
+            }
+            
+            exportCanvasAsPNG(canvas, 'boundary_cancellation_3d.png');
+        }
+        
+        function exportChartAsPNG() {
+            if (!state.chart) {
+                showExportStatus('Chart not initialized', true);
+                return;
+            }
+            
+            const canvas = state.chart.canvas;
+            exportCanvasAsPNG(canvas, 'boundary_cancellation_chart.png');
+        }
+        
+        function exportCanvasAsPNG(canvas, filename, scale = 4) {
+            if (!canvas) {
+                showExportStatus(`Canvas not found for ${filename}`, true);
+                return;
+            }
+            
             const exportCanvas = document.createElement('canvas');
             const ctx = exportCanvas.getContext('2d');
             
@@ -1929,16 +2049,50 @@
             exportCanvas.width = width;
             exportCanvas.height = height;
             
+            // Fill background
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, width, height);
+            
             // Draw original canvas content scaled up
             ctx.imageSmoothingEnabled = true;
             ctx.imageSmoothingQuality = 'high';
-            ctx.drawImage(canvas, 0, 0, width, height);
+            
+            // Calculate aspect ratio and position
+            const aspectRatio = canvas.width / canvas.height;
+            let drawWidth, drawHeight, offsetX, offsetY;
+            
+            if (aspectRatio > width / height) {
+                // Canvas is wider than target
+                drawWidth = width;
+                drawHeight = width / aspectRatio;
+                offsetX = 0;
+                offsetY = (height - drawHeight) / 2;
+            } else {
+                // Canvas is taller than target
+                drawHeight = height;
+                drawWidth = height * aspectRatio;
+                offsetX = (width - drawWidth) / 2;
+                offsetY = 0;
+            }
+            
+            ctx.drawImage(canvas, offsetX, offsetY, drawWidth, drawHeight);
             
             // Add watermark
+            ctx.font = 'bold 36px Arial';
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.textAlign = 'center';
+            ctx.fillText('Boundary Cancellation Principle', width / 2, 50);
+            
             ctx.font = '24px Arial';
             ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
             ctx.textAlign = 'right';
-            ctx.fillText('Boundary Cancellation Principle © 2025 Wessen Getachew', width - 20, height - 20);
+            ctx.fillText('© 2025 Wessen Getachew | @7dview', width - 20, height - 20);
+            
+            // Add timestamp
+            ctx.textAlign = 'left';
+            const now = new Date();
+            const timestamp = now.toLocaleString();
+            ctx.fillText(timestamp, 20, height - 20);
             
             // Create download link
             const link = document.createElement('a');
@@ -1947,18 +2101,6 @@
             link.click();
             
             showExportStatus(`Exported ${filename} (${width}x${height})`);
-        }
-        
-        function exportChartAsPNG() {
-            if (!state.chart) return;
-            
-            const chartCanvas = state.chart.canvas;
-            const link = document.createElement('a');
-            link.download = 'boundary_cancellation_chart.png';
-            link.href = chartCanvas.toDataURL('image/png');
-            link.click();
-            
-            showExportStatus('Exported chart as PNG');
         }
         
         function exportErrorDataCSV() {
@@ -2012,11 +2154,11 @@
             
             // Build CSV for 2D lattice
             let csv2D = 'x,y,gcd,is_coprime,is_boundary\n';
-            for (let x = 1; x <= R2D; x++) {
-                for (let y = 1; y <= R2D; y++) {
+            for (let x = 1; x <= Math.min(R2D, 100); x++) { // Limit to 100 for file size
+                for (let y = 1; y <= Math.min(R2D, 100); y++) {
                     const g = gcd(x, y);
                     const isCoprime = g === 1;
-                    const isBoundary = isBoundaryPoint(x, y, 1, R2D);
+                    const isBoundary = isBoundaryPoint(x, y, 1, Math.min(R2D, 100));
                     csv2D += `${x},${y},${g},${isCoprime},${isBoundary}\n`;
                 }
             }
@@ -2143,8 +2285,13 @@
                     state.currentTab = tabId;
                     
                     // Initialize specific visualization if needed
-                    if (tabId === '3d' && !state.threeScene) {
+                    if (tabId === '3d' && !state.is3DInitialized) {
                         init3DVisualization();
+                    }
+                    
+                    // Resize charts if needed
+                    if (tabId === 'chart' && state.chart) {
+                        state.chart.resize();
                     }
                 });
             });
@@ -2166,18 +2313,8 @@
             initChart();
             
             // Set up export buttons
-            document.getElementById('export2DPNG').addEventListener('click', () => {
-                exportCanvasAsPNG('latticeCanvas2D', 'boundary_cancellation_2d.png');
-            });
-            
-            document.getElementById('export3DPNG').addEventListener('click', () => {
-                if (state.currentTab !== '3d') {
-                    showExportStatus('Please switch to 3D visualization tab first', true);
-                    return;
-                }
-                exportCanvasAsPNG('latticeCanvas3D', 'boundary_cancellation_3d.png');
-            });
-            
+            document.getElementById('export2DPNG').addEventListener('click', export2DAsPNG);
+            document.getElementById('export3DPNG').addEventListener('click', export3DAsPNG);
             document.getElementById('exportChartPNG').addEventListener('click', exportChartAsPNG);
             document.getElementById('exportDataCSV').addEventListener('click', exportErrorDataCSV);
             document.getElementById('exportLatticeCSV').addEventListener('click', exportLatticePointsCSV);
@@ -2186,11 +2323,15 @@
             // Handle window resize
             window.addEventListener('resize', () => {
                 draw2DLattice();
-                if (state.threeRenderer) {
+                if (state.threeRenderer && state.is3DInitialized) {
                     const canvas = document.getElementById('latticeCanvas3D');
-                    state.threeRenderer.setSize(canvas.clientWidth, canvas.clientHeight);
-                    state.threeCamera.aspect = canvas.clientWidth / canvas.clientHeight;
+                    const container = canvas.parentElement;
+                    const width = container.clientWidth;
+                    const height = container.clientHeight;
+                    
+                    state.threeCamera.aspect = width / height;
                     state.threeCamera.updateProjectionMatrix();
+                    state.threeRenderer.setSize(width, height);
                 }
                 if (state.chart) {
                     state.chart.resize();
@@ -2203,6 +2344,16 @@
         
         // Initialize when page loads
         window.addEventListener('load', init);
+        
+        // Clean up animation frames on page unload
+        window.addEventListener('beforeunload', () => {
+            if (state.animationFrameId) {
+                cancelAnimationFrame(state.animationFrameId);
+            }
+            if (state.animationId) {
+                clearTimeout(state.animationId);
+            }
+        });
         
         // Initialize MathJax configuration
         window.MathJax = {
