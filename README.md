@@ -893,7 +893,7 @@
             <p class="main-subtitle">A Discovery Engine for Arithmetic Lattice Residues and Riemann Hypothesis Connections</p>
             <div class="author-info">
                 <div class="author-name">Wessen Getachew</div>
-                <div class="author-social">Twitter: @7dview · GitHub: 7dview</div>
+                <div class="author-social">Twitter: @7dview </div>
             </div>
         </header>
         
@@ -901,19 +901,19 @@
         <div class="tabs-container">
             <nav class="tabs-nav">
                 <button class="tab-btn active" data-tab="overview">
-                    <span class="tab-icon">📊</span> Overview
+                    <span class="tab-icon"></span> Overview
                 </button>
                 <button class="tab-btn" data-tab="visualization">
-                    <span class="tab-icon">🎨</span> Visualizations
+                    <span class="tab-icon"></span> Visualizations
                 </button>
                 <button class="tab-btn" data-tab="analysis">
-                    <span class="tab-icon">📈</span> Error Analysis
+                    <span class="tab-icon"></span> Error Analysis
                 </button>
                 <button class="tab-btn" data-tab="gcd">
-                    <span class="tab-icon">🧮</span> GCD Calculator
+                    <span class="tab-icon"></span> GCD Calculator
                 </button>
                 <button class="tab-btn" data-tab="export">
-                    <span class="tab-icon">💾</span> Export Data
+                    <span class="tab-icon"></span> Export Data
                 </button>
             </nav>
             
@@ -923,7 +923,7 @@
                     <div class="section abstract">
                         <div class="section-header">
                             <h2 class="section-title">
-                                <span class="icon">🔬</span> Abstract
+                                <span class="icon"></span> Abstract
                             </h2>
                         </div>
                         <p>In the limit as \(R \to \infty\), the density of coprime \(k\)-tuples in an integer lattice \(\mathbb{Z}^k\) converges to \(1/\zeta(k)\). However, for any finite search radius \(R\), a residual error term \(\Delta(R)\) exists. This discovery engine identifies this error not as stochastic noise, but as a deterministic geometric residue. We demonstrate that \(\Delta(R)\) is a function of the \((k-1)\) boundary shell of the \(k\)-cube, where the Möbius inversion engine is truncated by the finite search radius \(R\).</p>
@@ -932,7 +932,7 @@
                     <div class="section">
                         <div class="section-header">
                             <h2 class="section-title">
-                                <span class="icon">✨</span> Key Discoveries
+                                <span class="icon"></span> Key Discoveries
                             </h2>
                         </div>
                         <div class="key-results-grid">
@@ -958,7 +958,7 @@
                     <div class="section">
                         <div class="section-header">
                             <h2 class="section-title">
-                                <span class="icon">📚</span> Mathematical Foundation
+                                <span class="icon"></span> Mathematical Foundation
                             </h2>
                         </div>
                         <div class="controls-grid">
@@ -994,7 +994,7 @@
                     <div class="section">
                         <div class="section-header">
                             <h2 class="section-title">
-                                <span class="icon">🎨</span> 2D Lattice Visualization
+                                <span class="icon"></span> 2D Lattice Visualization
                             </h2>
                             <div class="section-subtitle">Click on points to inspect GCD values</div>
                         </div>
@@ -1032,7 +1032,7 @@
                         
                         <!-- Point Inspector -->
                         <div id="point-inspector" style="display: none; margin-top: 1rem; padding: 1rem; background: rgba(255,255,255,0.05); border-radius: 8px;">
-                            <h4>📌 Selected Point</h4>
+                            <h4> Selected Point</h4>
                             <div id="point-details" style="font-family: monospace; margin-top: 0.5rem;"></div>
                         </div>
                         
@@ -1108,7 +1108,7 @@
                     <div class="section">
                         <div class="section-header">
                             <h2 class="section-title">
-                                <span class="icon">🎲</span> 3D Lattice Visualization
+                                <span class="icon"></span> 3D Lattice Visualization
                             </h2>
                             <div class="section-subtitle">Drag to rotate, scroll to zoom. Colors indicate GCD.</div>
                         </div>
@@ -1197,7 +1197,7 @@
                     <div class="section">
                         <div class="section-header">
                             <h2 class="section-title">
-                                <span class="icon">📈</span> Error Analysis Chart
+                                <span class="icon"></span> Error Analysis Chart
                             </h2>
                             <div class="section-subtitle">Visualization of Δ(R) across dimensions and radii</div>
                         </div>
@@ -1283,7 +1283,7 @@
                     <div class="section">
                         <div class="section-header">
                             <h2 class="section-title">
-                                <span class="icon">⚡</span> Real-time Diagnostics
+                                <span class="icon"></span> Real-time Diagnostics
                             </h2>
                             <div class="section-subtitle">Live analysis of boundary cancellation patterns</div>
                         </div>
@@ -1352,7 +1352,7 @@
                     <div class="section gcd-calculator">
                         <div class="section-header">
                             <h2 class="section-title">
-                                <span class="icon">🧮</span> GCD Calculator
+                                <span class="icon"></span> GCD Calculator
                             </h2>
                             <div class="section-subtitle">Compute greatest common divisors with prime factorization</div>
                         </div>
@@ -1421,7 +1421,7 @@
                     <div class="section">
                         <div class="section-header">
                             <h2 class="section-title">
-                                <span class="icon">🔢</span> Number Theory Tools
+                                <span class="icon"></span> Number Theory Tools
                             </h2>
                             <div class="section-subtitle">Additional utilities for number analysis</div>
                         </div>
@@ -1468,29 +1468,29 @@
                     <div class="section">
                         <div class="section-header">
                             <h2 class="section-title">
-                                <span class="icon">💾</span> Export Data & Visualizations
+                                <span class="icon"></span> Export Data & Visualizations
                             </h2>
                             <div class="section-subtitle">Save high-resolution images and datasets for publication</div>
                         </div>
                         
                         <div class="export-grid">
                             <button class="export-btn png" id="export2DPNG">
-                                <span>📷</span> 2D Visualization (4K PNG)
+                                <span></span> 2D Visualization (4K PNG)
                             </button>
                             <button class="export-btn png" id="export3DPNG">
-                                <span>📷</span> 3D Visualization (4K PNG)
+                                <span></span> 3D Visualization (4K PNG)
                             </button>
                             <button class="export-btn png" id="exportChartPNG">
-                                <span>📈</span> Error Chart (4K PNG)
+                                <span></span> Error Chart (4K PNG)
                             </button>
                             <button class="export-btn csv" id="exportErrorCSV">
-                                <span>📊</span> Error Data (CSV)
+                                <span></span> Error Data (CSV)
                             </button>
                             <button class="export-btn csv" id="exportLatticeCSV">
-                                <span>📊</span> Lattice Points (CSV)
+                                <span></span> Lattice Points (CSV)
                             </button>
                             <button class="export-btn json" id="exportFullReport">
-                                <span>📄</span> Full Report (JSON)
+                                <span></span> Full Report (JSON)
                             </button>
                         </div>
                         
@@ -1502,7 +1502,7 @@
                     <div class="section">
                         <div class="section-header">
                             <h2 class="section-title">
-                                <span class="icon">⚙️</span> Export Settings
+                                <span class="icon"></span> Export Settings
                             </h2>
                         </div>
                         
@@ -1568,7 +1568,7 @@
     
     <!-- Research Mode Toggle -->
     <button class="research-toggle" id="researchToggle">
-        <span>🔬</span> Research Mode
+        <span></span> Research Mode
     </button>
     
     <!-- Research Mode Overlay -->
@@ -1584,7 +1584,7 @@
             <div class="research-grid">
                 <!-- Möbius Wave Panel -->
                 <div class="research-panel">
-                    <h4><span>🌊</span> Möbius Wave Overlay</h4>
+                    <h4><span></span> Möbius Wave Overlay</h4>
                     <p>Visualizes the cumulative sum of μ(d) (Mertens function) to reveal cancellation patterns.</p>
                     
                     <div class="diagnostic-controls">
@@ -1601,7 +1601,7 @@
                 
                 <!-- Log-Log Analysis Panel -->
                 <div class="research-panel">
-                    <h4><span>📐</span> Log-Log Scaling & Exponent Hunter</h4>
+                    <h4><span></span> Log-Log Scaling & Exponent Hunter</h4>
                     <p>Calculates growth exponent α in Δ(R) ∝ R^α using linear regression on log-log plot.</p>
                     
                     <div class="diagnostic-controls">
@@ -1621,7 +1621,7 @@
                 
                 <!-- Critical Strip Panel -->
                 <div class="research-panel">
-                    <h4><span>🎯</span> Critical Strip Projection</h4>
+                    <h4><span></span> Critical Strip Projection</h4>
                     <p>Maps Δ(R) onto complex plane to test Riemann Hypothesis predictions.</p>
                     
                     <div class="critical-strip-canvas">
@@ -1640,7 +1640,7 @@
                 
                 <!-- High Precision Panel -->
                 <div class="research-panel">
-                    <h4><span>🎯</span> High-Precision Arithmetic</h4>
+                    <h4><span></span> High-Precision Arithmetic</h4>
                     <p>Compares 64-bit floating point with arbitrary precision Decimal.js calculations.</p>
                     
                     <div class="diagnostic-controls">
@@ -1659,7 +1659,7 @@
             
             <!-- Research Console -->
             <div class="research-panel" style="grid-column: 1 / -1;">
-                <h4><span>💻</span> Research Console</h4>
+                <h4><span></span> Research Console</h4>
                 <div class="research-console" id="researchConsole">
 [System] Research Mode Initialized
 [System] Diagnostic overlays ready
